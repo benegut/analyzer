@@ -1,0 +1,8 @@
+analyzer
+.git
+*.o
+Makefile
+moc*
+qcustomplot.h
+.qmake.stash
+
