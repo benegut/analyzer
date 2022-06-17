@@ -15,12 +15,9 @@ class Window : public QMainWindow
 public:
   Window();
 
-  QSplitter *             splitter;
   QCustomPlot *           timePlot;
   QCustomPlot *           xyPlot;
   QCPColorMap *           colorMap;
-
-  //QMenu *                 view;
 
 private:
   void                    actions();
