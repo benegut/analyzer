@@ -5,4 +5,4 @@ Makefile
 moc*
 qcustomplot.h
 .qmake.stash
-
+*.gif
