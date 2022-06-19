@@ -261,6 +261,9 @@ PlotContextMenu::PlotContextMenu()
   addAction(remove_action);
   connect(remove_action, &QAction::triggered, [this](){plottable->parentPlot()->removePlottable(plottable);plottable->parentPlot()->replot();});
 
+  QAction * set_as_z_action = new QAction(tr("&Z"));
+  addAction(set_as_z_action);
+
 }
 
 
@@ -277,6 +280,9 @@ void PlotContextMenu::copy_action_slot()
 
 void PlotContextMenu::truncate_action_slot()
 {
+  plottable->parentPlot()->setSelectionRectMode(QCP::srmSelect);
+  plottable->setSelectable(QCP::stDataRange);
+
 }
 
 
