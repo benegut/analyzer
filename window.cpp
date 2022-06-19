@@ -8,7 +8,7 @@ Window::Window()
   : timePlot(new QCustomPlot)
   , xyPlot(new QCustomPlot)
   , colorMap(new QCPColorMap(xyPlot->xAxis, xyPlot->yAxis))
-  , plotcontextmenu(new PlotContextMenu)
+  , plotcontextmenu(new PlotContextMenu(timePlot))
 {
   QSplitter * splitter = new QSplitter;
   splitter->addWidget(timePlot);
@@ -193,9 +193,6 @@ void Window::plottableClick_slot(QCPAbstractPlottable * plottable,
           plotcontextmenu->show();
         }
       break;
-
-    case Qt::LeftButton :
-      std::cout << "ch3ck\n"; break;
     default:
       break;
     }
@@ -239,7 +236,8 @@ int AskForHeader::get_value()
 }
 
 
-PlotContextMenu::PlotContextMenu()
+PlotContextMenu::PlotContextMenu(QCustomPlot * p)
+  : parent(p)
 {
   QAction * copy_action = new QAction(tr("&Copy"));
   addAction(copy_action);
@@ -264,6 +262,7 @@ PlotContextMenu::PlotContextMenu()
   QAction * set_as_z_action = new QAction(tr("&Z"));
   addAction(set_as_z_action);
 
+  connect(parent->selectionRect(), &QCPSelectionRect::accepted, this, &PlotContextMenu::selection_accepted_slot);
 }
 
 
@@ -281,8 +280,32 @@ void PlotContextMenu::copy_action_slot()
 void PlotContextMenu::truncate_action_slot()
 {
   plottable->parentPlot()->setSelectionRectMode(QCP::srmSelect);
-  plottable->setSelectable(QCP::stDataRange);
+  for(int i=0;i<plottable->parentPlot()->graphCount();i++)
+    {
+      if(plottable->parentPlot()->graph(i) == plottable)
+        plottable->setSelectable(QCP::stDataRange);
+      else
+        plottable->parentPlot()->graph(i)->setSelectable(QCP::stNone);
+    }
 
+}
+
+
+void PlotContextMenu::selection_accepted_slot()
+{
+  int b = (int)plottable->parentPlot()->selectionRect()->range(plottable->parentPlot()->xAxis).lower;
+  int e = (int)plottable->parentPlot()->selectionRect()->range(plottable->parentPlot()->xAxis).upper;
+  ((QCPGraph *)plottable)->data()->removeBefore(b);
+  ((QCPGraph *)plottable)->data()->removeAfter(e);
+
+  plottable->parentPlot()->setSelectionRectMode(QCP::srmNone);
+
+  for(int i=0;i<plottable->parentPlot()->graphCount();i++)
+    {
+      plottable->parentPlot()->graph(i)->setSelectable(QCP::stWhole);
+    }
+
+  plottable->parentPlot()->replot();
 }
 
 

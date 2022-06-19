@@ -12,16 +12,18 @@ class PlotContextMenu : public QMenu
   Q_OBJECT
 
 public:
-  PlotContextMenu();
+  PlotContextMenu(QCustomPlot *);
   void set_plottable(QCPAbstractPlottable *);
 
 private:
   QCPAbstractPlottable *  plottable;
+  QCustomPlot *           parent;
 
 public slots:
   void                    copy_action_slot();
   void                    truncate_action_slot();
   void                    filter_action_slot();
+  void                    selection_accepted_slot();
 };
 
 
