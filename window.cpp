@@ -9,6 +9,8 @@ Window::Window()
   , xyPlot(new QCustomPlot)
   , colorMap(new QCPColorMap(xyPlot->xAxis, xyPlot->yAxis))
   , plotcontextmenu(new PlotContextMenu(timePlot))
+  , lowerLine(new QCPItemStraightLine(timePlot))
+  , upperLine(new QCPItemStraightLine(timePlot))
 {
   QSplitter * splitter = new QSplitter;
   splitter->addWidget(timePlot);
@@ -27,6 +29,17 @@ Window::Window()
   xyPlot->axisRect()->setupFullAxesBox(true);
   xyPlot->setInteraction(QCP::iRangeZoom, true);
   xyPlot->setInteraction(QCP::iRangeDrag, true);
+
+  lowerLine->point1->setCoords(60, 0);
+  lowerLine->point2->setCoords(60, 100);
+  lowerLine->setVisible(false);
+  lowerLine->setSelectable(false);
+  connect(timePlot, &QCustomPlot::itemClick, this, &Window::itemClick_slot);
+
+  upperLine->point1->setCoords(260, 0);
+  upperLine->point2->setCoords(260, 100);
+  upperLine->setVisible(false);
+  upperLine->setSelectable(false);
 
   colorMap->setGradient(QCPColorGradient::gpGrayscale);
   colorMap->setDataRange(QCPRange(-1.0, 1.0));
@@ -85,15 +98,19 @@ void Window::actions()
   QMenu * tools = new QMenu;
   tools = menuBar()->addMenu(tr("&Tools"));
 
-  QAction * math_action = new QAction(tr("&Math"));
+  QAction * math_action = new QAction(tr("&Math Channel"));
   connect(math_action, &QAction::triggered, this, &Window::math_action_slot);
   tools->addAction(math_action);
+
+  QAction * range_cursor_action = new QAction(tr("&Cursor"));
+  connect(range_cursor_action, &QAction::triggered, this, &Window::range_cursor_action_slot);
+  tools->addAction(range_cursor_action);
 }
 
 
 void Window::open_action_slot()
 {
-  QString filename = QFileDialog::getOpenFileName(this, tr("&Open File"),"/home/avs-es", tr("*.analyzer"));
+  QString filename = QFileDialog::getOpenFileName(this, tr("&Open File"),"/home/avs-es/Documents/C++/live-plotter-4000/data", tr("*.analyzer"));
   if(filename != "")
     std::cout << "Not supported yet! Use Import.";
 }
@@ -111,7 +128,7 @@ void Window::save_as_action_slot()
 
 void Window::import_action_slot()
 {
-  std::string filename = QFileDialog::getOpenFileName(this, tr("Open File"),"/home/koyomi/Documents/data", tr("*.txt *csv")).toStdString();
+  std::string filename = QFileDialog::getOpenFileName(this, tr("Open File"),"/home/avs-es/Documents/C++/live-plotter-4000/data", tr("*.txt *csv")).toStdString();
   if(filename != "")
     {
       AskForHeader dialog;
@@ -176,6 +193,32 @@ void Window::export_action_slot()
 
 void Window::math_action_slot()
 {
+}
+
+
+void Window::range_cursor_action_slot()
+{
+  if(lowerLine->realVisibility())
+    {
+      lowerLine->setVisible(false);
+      lowerLine->setSelectable(false);
+      upperLine->setVisible(false);
+      upperLine->setSelectable(false);
+    }
+  else
+    {
+      lowerLine->setVisible(true);
+      lowerLine->setSelectable(true);
+      upperLine->setVisible(true);
+      upperLine->setSelectable(true);
+    }
+  timePlot->replot();
+}
+
+
+void Window::itemClick_slot()
+{
+  std::cout << "Item clicked.\n";
 }
 
 
@@ -247,6 +290,10 @@ PlotContextMenu::PlotContextMenu(QCustomPlot * p)
   addAction(truncate_action);
   connect(truncate_action, &QAction::triggered, this, &PlotContextMenu::truncate_action_slot);
 
+  QAction * truncate_all_action = new QAction(tr("&Truncate All"));
+  addAction(truncate_all_action);
+  connect(truncate_all_action, &QAction::triggered, this, &PlotContextMenu::truncate_all_action_slot);
+
   QAction * filter_action = new QAction(tr("&Filter"));
   addAction(filter_action);
   connect(filter_action, &QAction::triggered, this, &PlotContextMenu::filter_action_slot);
@@ -261,8 +308,6 @@ PlotContextMenu::PlotContextMenu(QCustomPlot * p)
 
   QAction * set_as_z_action = new QAction(tr("&Z"));
   addAction(set_as_z_action);
-
-  connect(parent->selectionRect(), &QCPSelectionRect::accepted, this, &PlotContextMenu::selection_accepted_slot);
 }
 
 
@@ -279,7 +324,10 @@ void PlotContextMenu::copy_action_slot()
 
 void PlotContextMenu::truncate_action_slot()
 {
-  plottable->parentPlot()->setSelectionRectMode(QCP::srmSelect);
+  QCPSelectionRect * truncate_selection_rect = new QCPSelectionRect(parent);
+  connect(truncate_selection_rect, &QCPSelectionRect::accepted, this, &PlotContextMenu::truncate_selection_accepted_slot);
+  parent->setSelectionRect(truncate_selection_rect);
+  parent->setSelectionRectMode(QCP::srmSelect);
   for(int i=0;i<plottable->parentPlot()->graphCount();i++)
     {
       if(plottable->parentPlot()->graph(i) == plottable)
@@ -287,26 +335,56 @@ void PlotContextMenu::truncate_action_slot()
       else
         plottable->parentPlot()->graph(i)->setSelectable(QCP::stNone);
     }
-
 }
 
 
-void PlotContextMenu::selection_accepted_slot()
+void PlotContextMenu::truncate_all_action_slot()
+{
+  QCPSelectionRect * truncate_all_selection_rect = new QCPSelectionRect(parent);
+  connect(truncate_all_selection_rect, &QCPSelectionRect::accepted, this, &PlotContextMenu::truncate_all_selection_accepted_slot);
+  parent->setSelectionRect(truncate_all_selection_rect);
+  parent->setSelectionRectMode(QCP::srmSelect);
+  for(int i=0;i<plottable->parentPlot()->graphCount();i++)
+    plottable->parentPlot()->graph(i)->setSelectable(QCP::stDataRange);
+}
+
+
+void PlotContextMenu::truncate_selection_accepted_slot()
 {
   int b = (int)plottable->parentPlot()->selectionRect()->range(plottable->parentPlot()->xAxis).lower;
   int e = (int)plottable->parentPlot()->selectionRect()->range(plottable->parentPlot()->xAxis).upper;
+
   ((QCPGraph *)plottable)->data()->removeBefore(b);
   ((QCPGraph *)plottable)->data()->removeAfter(e);
 
   plottable->parentPlot()->setSelectionRectMode(QCP::srmNone);
 
   for(int i=0;i<plottable->parentPlot()->graphCount();i++)
-    {
-      plottable->parentPlot()->graph(i)->setSelectable(QCP::stWhole);
-    }
+    plottable->parentPlot()->graph(i)->setSelectable(QCP::stWhole);
 
   plottable->parentPlot()->replot();
 }
+
+
+void PlotContextMenu::truncate_all_selection_accepted_slot()
+{
+  int b = (int)plottable->parentPlot()->selectionRect()->range(plottable->parentPlot()->xAxis).lower;
+  int e = (int)plottable->parentPlot()->selectionRect()->range(plottable->parentPlot()->xAxis).upper;
+
+  for(int i=0; i<plottable->parentPlot()->graphCount();i++)
+    {
+      plottable->parentPlot()->graph(i)->data()->removeBefore(b);
+      plottable->parentPlot()->graph(i)->data()->removeAfter(e);
+    }
+
+  plottable->parentPlot()->setSelectionRectMode(QCP::srmNone);
+
+  for(int i=0;i<plottable->parentPlot()->graphCount();i++)
+    plottable->parentPlot()->graph(i)->setSelectable(QCP::stWhole);
+
+  plottable->parentPlot()->replot();
+}
+
 
 
 void PlotContextMenu::filter_action_slot()

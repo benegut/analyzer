@@ -22,8 +22,10 @@ private:
 public slots:
   void                    copy_action_slot();
   void                    truncate_action_slot();
+  void                    truncate_all_action_slot();
   void                    filter_action_slot();
-  void                    selection_accepted_slot();
+  void                    truncate_selection_accepted_slot();
+  void                    truncate_all_selection_accepted_slot();
 };
 
 
@@ -51,6 +53,8 @@ public:
   QCustomPlot *           xyPlot;
   QCPColorMap *           colorMap;
 
+  QCPItemStraightLine *           lowerLine;
+  QCPItemStraightLine *           upperLine;
 
 public slots:
   void                    open_action_slot();
@@ -59,6 +63,8 @@ public slots:
   void                    import_action_slot();
   void                    export_action_slot();
   void                    math_action_slot();
+  void                    range_cursor_action_slot();
+  void                    itemClick_slot();
   void                    plottableClick_slot(QCPAbstractPlottable *,
                                               int,
                                               QMouseEvent *);
