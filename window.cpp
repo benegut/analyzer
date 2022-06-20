@@ -8,7 +8,7 @@ Window::Window()
   : timePlot(new QCustomPlot)
   , xyPlot(new QCustomPlot)
   , colorMap(new QCPColorMap(xyPlot->xAxis, xyPlot->yAxis))
-  , plotcontextmenu(new PlotContextMenu(timePlot))
+  , plotcontextmenu(new PlotContextMenu(timePlot, this))
   , lowerLine(new QCPItemStraightLine(timePlot))
   , upperLine(new QCPItemStraightLine(timePlot))
 {
@@ -34,12 +34,16 @@ Window::Window()
   lowerLine->point2->setCoords(60, 100);
   lowerLine->setVisible(false);
   lowerLine->setSelectable(false);
-  connect(timePlot, &QCustomPlot::itemClick, this, &Window::itemClick_slot);
+  lowerLine->setPen(QPen(QColor(Qt::darkRed)));
 
   upperLine->point1->setCoords(260, 0);
   upperLine->point2->setCoords(260, 100);
   upperLine->setVisible(false);
   upperLine->setSelectable(false);
+  upperLine->setPen(QPen(QColor(Qt::darkRed)));
+
+  connect(timePlot, &QCustomPlot::mousePress, this, &Window::mousePress_slot);
+  connect(timePlot, &QCustomPlot::mouseRelease, this, &Window::mouseRelease_slot);
 
   colorMap->setGradient(QCPColorGradient::gpGrayscale);
   colorMap->setDataRange(QCPRange(-1.0, 1.0));
@@ -155,6 +159,8 @@ void Window::load_file(std::string filename, int headers)
   file.clear();
   file.seekg(0);
 
+
+
   int rowCount = 0;
   while(getline(file,line))
     rowCount++;
@@ -201,24 +207,73 @@ void Window::range_cursor_action_slot()
   if(lowerLine->realVisibility())
     {
       lowerLine->setVisible(false);
-      lowerLine->setSelectable(false);
       upperLine->setVisible(false);
-      upperLine->setSelectable(false);
     }
   else
     {
       lowerLine->setVisible(true);
-      lowerLine->setSelectable(true);
       upperLine->setVisible(true);
-      upperLine->setSelectable(true);
     }
   timePlot->replot();
 }
 
 
-void Window::itemClick_slot()
+void Window::mousePress_slot(QMouseEvent * event)
 {
-  std::cout << "Item clicked.\n";
+  if((event->pos().x() > lowerLine->point1->pixelPosition().x()-3) &&
+     (event->pos().x() < lowerLine->point1->pixelPosition().x()+3) &&
+     lowerLine->realVisibility())
+    {
+      connect(timePlot, &QCustomPlot::mouseMove, this, &Window::change_lowerLine_position_slot);
+      timePlot->setInteraction(QCP::iRangeDrag, false);
+    }
+  else if((event->pos().x() > upperLine->point1->pixelPosition().x()-3) &&
+          (event->pos().x() < upperLine->point1->pixelPosition().x()+3) &&
+          upperLine->realVisibility())
+    {
+      connect(timePlot, &QCustomPlot::mouseMove, this, &Window::change_upperLine_position_slot);
+      timePlot->setInteraction(QCP::iRangeDrag, false);
+    }
+}
+
+
+void Window::change_lowerLine_position_slot(QMouseEvent * event)
+{
+  if(event->pos().x() >= upperLine->point1->pixelPosition().x())
+    {
+      lowerLine->point1->setCoords(timePlot->xAxis->pixelToCoord(upperLine->point1->pixelPosition().x()), 0);
+      lowerLine->point2->setCoords(timePlot->xAxis->pixelToCoord(upperLine->point1->pixelPosition().x()),100);
+    }
+  else
+    {
+      lowerLine->point1->setCoords(timePlot->xAxis->pixelToCoord(event->pos().x()), 0);
+      lowerLine->point2->setCoords(timePlot->xAxis->pixelToCoord(event->pos().x()),100);
+    }
+  timePlot->replot();
+}
+
+
+void Window::change_upperLine_position_slot(QMouseEvent * event)
+{
+  if(event->pos().x() <= lowerLine->point1->pixelPosition().x())
+    {
+      upperLine->point1->setCoords(timePlot->xAxis->pixelToCoord(lowerLine->point1->pixelPosition().x()), 0);
+      upperLine->point2->setCoords(timePlot->xAxis->pixelToCoord(lowerLine->point1->pixelPosition().x()),100);
+    }
+  else
+    {
+      upperLine->point1->setCoords(timePlot->xAxis->pixelToCoord(event->pos().x()), 0);
+      upperLine->point2->setCoords(timePlot->xAxis->pixelToCoord(event->pos().x()),100);
+    }
+  timePlot->replot();
+}
+
+
+void Window::mouseRelease_slot()
+{
+  disconnect(timePlot, &QCustomPlot::mouseMove, this, &Window::change_lowerLine_position_slot);
+  disconnect(timePlot, &QCustomPlot::mouseMove, this, &Window::change_upperLine_position_slot);
+  timePlot->setInteraction(QCP::iRangeDrag, true);
 }
 
 
@@ -279,8 +334,9 @@ int AskForHeader::get_value()
 }
 
 
-PlotContextMenu::PlotContextMenu(QCustomPlot * p)
+PlotContextMenu::PlotContextMenu(QCustomPlot * p, Window * w)
   : parent(p)
+  , window_parent(w)
 {
   QAction * copy_action = new QAction(tr("&Copy"));
   addAction(copy_action);
@@ -293,6 +349,14 @@ PlotContextMenu::PlotContextMenu(QCustomPlot * p)
   QAction * truncate_all_action = new QAction(tr("&Truncate All"));
   addAction(truncate_all_action);
   connect(truncate_all_action, &QAction::triggered, this, &PlotContextMenu::truncate_all_action_slot);
+
+  QAction * truncate_at_cursor_action = new QAction(tr("&Truncate At Cursor"));
+  addAction(truncate_at_cursor_action);
+  connect(truncate_at_cursor_action, &QAction::triggered, this, &PlotContextMenu::truncate_at_cursor_action_slot);
+
+  QAction * truncate_all_at_cursor_action = new QAction(tr("&Truncate All At Cursor"));
+  addAction(truncate_all_at_cursor_action);
+  connect(truncate_all_at_cursor_action, &QAction::triggered, this, &PlotContextMenu::truncate_all_at_cursor_action_slot);
 
   QAction * filter_action = new QAction(tr("&Filter"));
   addAction(filter_action);
@@ -308,6 +372,7 @@ PlotContextMenu::PlotContextMenu(QCustomPlot * p)
 
   QAction * set_as_z_action = new QAction(tr("&Z"));
   addAction(set_as_z_action);
+  connect(set_as_z_action, &QAction::triggered, this, &PlotContextMenu::set_as_z_action_slot);
 }
 
 
@@ -386,7 +451,39 @@ void PlotContextMenu::truncate_all_selection_accepted_slot()
 }
 
 
+void PlotContextMenu::truncate_at_cursor_action_slot()
+{
+  int b = window_parent->lowerLine->point1->key();
+  int e = window_parent->upperLine->point1->key();
+
+  ((QCPGraph *)plottable)->data()->removeBefore(b);
+  ((QCPGraph *)plottable)->data()->removeAfter(e);
+
+  parent->replot();
+}
+
+
+void PlotContextMenu::truncate_all_at_cursor_action_slot()
+{
+  int b = window_parent->lowerLine->point1->key();
+  int e = window_parent->upperLine->point1->key();
+
+  for(int i=0; i<parent->graphCount();i++)
+    {
+      parent->graph(i)->data()->removeBefore(b);
+      parent->graph(i)->data()->removeAfter(e);
+    }
+
+  parent->replot();
+}
+
 
 void PlotContextMenu::filter_action_slot()
 {
+}
+
+
+void PlotContextMenu::set_as_z_action_slot()
+{
+
 }

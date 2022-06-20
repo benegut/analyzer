@@ -6,16 +6,18 @@
 #include "qcustomplot.h"
 #include <string>
 
+class Window;
 
 class PlotContextMenu : public QMenu
 {
   Q_OBJECT
 
 public:
-  PlotContextMenu(QCustomPlot *);
+  PlotContextMenu(QCustomPlot *, Window *);
   void set_plottable(QCPAbstractPlottable *);
 
 private:
+  Window *                window_parent;
   QCPAbstractPlottable *  plottable;
   QCustomPlot *           parent;
 
@@ -26,6 +28,9 @@ public slots:
   void                    filter_action_slot();
   void                    truncate_selection_accepted_slot();
   void                    truncate_all_selection_accepted_slot();
+  void                    truncate_at_cursor_action_slot();
+  void                    truncate_all_at_cursor_action_slot();
+  void                    set_as_z_action_slot();
 };
 
 
@@ -64,7 +69,10 @@ public slots:
   void                    export_action_slot();
   void                    math_action_slot();
   void                    range_cursor_action_slot();
-  void                    itemClick_slot();
+  void                    mousePress_slot(QMouseEvent *);
+  void                    change_lowerLine_position_slot(QMouseEvent *);
+  void                    change_upperLine_position_slot(QMouseEvent *);
+  void                    mouseRelease_slot();
   void                    plottableClick_slot(QCPAbstractPlottable *,
                                               int,
                                               QMouseEvent *);
