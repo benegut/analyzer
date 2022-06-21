@@ -4,9 +4,56 @@
 
 #include <QMainWindow>
 #include "qcustomplot.h"
+#include <exprtk.hpp>
 #include <string>
+#include <vector>
+
+
+typedef enum
+  {
+    OFF, X, Y, Z0, Z1, Z2, Z3, Z4, Z5, Z6, Z7, Z8, Z9
+  }MODE;
+
 
 class Window;
+class MathWindow;
+
+class Equation : public QWidget
+{
+  Q_OBJECT
+
+public:
+  Equation(QString, MathWindow *);
+  QGridLayout *                   layout;
+  QGroupBox *                     box;
+  exprtk::symbol_table<double>  * symbol_table;
+  exprtk::expression<double>    * expression;
+  exprtk::parser<double>        * parser;
+
+
+private:
+  QString                     equation_str;
+  MathWindow *                parent;
+  std::vector<double>         params;
+
+};
+
+
+class MathWindow : public QWidget
+{
+  Q_OBJECT
+
+public:
+  MathWindow(Window *);
+  Window *                    parent;
+  QGridLayout *               layout;
+  QLineEdit *                 entryField;
+  QPushButton *               eval_button;
+  QMap<QString, Equation*> *  map;
+
+public slots:
+  void                        eval_slot();
+};
 
 
 typedef struct ColorMapDataHolder
@@ -59,6 +106,19 @@ private:
 };
 
 
+class AskForPolandFile : public QDialog
+{
+  Q_OBJECT
+
+public:
+  AskForPolandFile();
+  bool get_value();
+
+private:
+  bool result;
+};
+
+
 class Window : public QMainWindow
 {
   Q_OBJECT
@@ -92,12 +152,13 @@ public slots:
                                               QMouseEvent *);
   void                    mouseDoubleClick_slot(QMouseEvent *);
 
-  void                    load_file(std::string, int);
-
 private:
   void                    actions();
+  void                    load_file(std::string, int);
+  void                    get_names_from_header_POLAND(std::string);
 
-  PlotContextMenu *       plotcontextmenu;
+  PlotContextMenu *             plotcontextmenu;
+  QMap<int, std::string>        graph_label;
 
 protected:
   void contextMenuEvent(QContextMenuEvent *event) override;

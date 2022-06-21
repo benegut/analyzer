@@ -3,6 +3,8 @@
 #include <string>
 #include <sstream>
 #include <fstream>
+#include <vector>
+#include <cstdio>
 
 Window::Window()
   : timePlot(new QCustomPlot)
@@ -139,6 +141,10 @@ void Window::import_action_slot()
       int headers = dialog.get_value();
 
       load_file(filename,headers);
+
+      AskForPolandFile dialog2;
+      if(dialog2.get_value())
+        get_names_from_header_POLAND(filename);
     }
   timePlot->replot();
 }
@@ -150,47 +156,73 @@ void Window::load_file(std::string filename, int headers)
   std::string line;
 
   getline(file,line);
+
   std::stringstream ss1(line);
   std::string number1;
-  int columnCount = 0;
+
+  int j = 0;
   while(getline(ss1,number1,'\t'))
-    columnCount++;
+    {
+      timePlot->addGraph();
+      timePlot->graph()->setPen(QPen(QColor((Qt::GlobalColor)(7+j))));
+      timePlot->graph()->setSelectable(QCP::stWhole);
+      j++;
+    }
 
   file.clear();
   file.seekg(0);
 
-
-
-  int rowCount = 0;
-  while(getline(file,line))
-    rowCount++;
-
-  for(int j=0;j<columnCount;j++)
-    timePlot->addGraph();
-
-  file.clear();
-  file.seekg(0);
-
-  int counter = 0;
   for(int i=0;i<headers;i++)
     getline(file, line);
 
-  while(getline(file, line) && counter < 1000000000)
+  while(getline(file, line))
     {
       std::stringstream ss(line);
       std::string number;
       int j = 0;
       while(getline(ss,number,'\t'))
         {
-          timePlot->graph(j)->addData((double)counter,std::stod(number));
-          timePlot->graph(j)->setPen(QPen(QColor((Qt::GlobalColor)(7+j))));
-          timePlot->graph(j)->setSelectable(QCP::stWhole);
-          j++;
+          timePlot->graph(j)->addData((double)timePlot->graph(j++)->dataCount(),std::stod(number));
+          //j++;
         }
-      counter++;
     }
+  file.close();
 }
 
+
+void Window::get_names_from_header_POLAND(std::string filename)
+{
+  std::ifstream file(filename);
+  std::string line;
+
+  getline(file, line);
+
+  std::stringstream ss(line);
+  std::string number;
+
+  int i = 0;
+  while(getline(ss, number, '\t'))
+      {
+        std::string label;
+        switch(number)
+          {
+          case "1" : label = "X"; break;
+          case "2" : label = "Y"; break;
+          case "3" : label = "Z0"; break;
+          case "4" : label = "Z1"; break;
+          case "5" : label = "Z2"; break;
+          case "6" : label = "Z3"; break;
+          case "7" : label = "Z4"; break;
+          case "8" : label = "Z5"; break;
+          case "9" : label = "Z6"; break;
+          case "10" : label = "Z7"; break;
+          case "11" : label = "Z8"; break;
+          case "12" : label = "Z9"; break;
+          }
+        graph_label.insert(i, label);
+        i++;
+      }
+}
 
 void Window::export_action_slot()
 {
@@ -332,6 +364,30 @@ int AskForHeader::get_value()
 {
   return headers_value;
 }
+
+
+AskForPolandFile::AskForPolandFile()
+{
+  QLabel *        label = new QLabel(this);
+  label->setText("File from last Poland trip?");
+  QPushButton * YesButton = new QPushButton("Yes", this);
+  connect(YesButton, &QPushButton::clicked, [this](){result = true;done(1);});
+  QPushButton * NoButton = new QPushButton("No", this);
+  connect(NoButton, &QPushButton::clicked, [this](){result = false;done(1);});
+  QVBoxLayout * layout = new QVBoxLayout(this);
+  layout->addWidget(label);
+  layout->addWidget(YesButton);
+  layout->addWidget(NoButton);
+  setLayout(layout);
+  exec();
+}
+
+
+bool AskForPolandFile::get_value()
+{
+  return result;
+}
+
 
 
 PlotContextMenu::PlotContextMenu(QCustomPlot * p, Window * w)
@@ -538,4 +594,85 @@ void PlotContextMenu::set_as_z_action_slot()
       startZ++;
     }
     window_parent->xyPlot->replot();
+}
+
+
+void MathWindow::eval_slot()
+{
+  if(!map->contains(entryField->text()))
+    map->insert(entryField->text(), new Equation(entryField->text(), this));
+}
+
+
+
+Equation::Equation(QString e_str, MathWindow * parent)
+  : parent(parent)
+  , equation_str(e_str)
+  , layout(new QGridLayout)
+  , box(new QGroupBox(equation_str, this))
+  , symbol_table(new exprtk::symbol_table<double>)
+  , expression(new exprtk::expression<double>)
+  , parser(new exprtk::parser<double>)
+  , params(std::vector<double>(100))
+{
+  int i = 0;
+  QVector<QString> tracker;
+  for(auto c: equation_str)
+    {
+      QString str(c);
+
+      if(str.contains(QRegExp("[a-m]")) && !tracker.contains(str))
+        {
+          tracker.push_back(str);
+
+          QSlider * slider = new QSlider(Qt::Vertical, this);
+          slider->setMaximum(100);
+          slider->setMinimum(-100);
+          slider->setSliderPosition(2);
+          layout->addWidget(slider, 1, layout->columnCount());
+          slider->show();
+          connect(slider, &QSlider::valueChanged, [this, slider, e_str, i, c](){this->params[i] = (double)slider->value();});
+
+          QLabel *  label  = new QLabel(str, this);
+          layout->addWidget(label, 0, layout->columnCount());
+
+          if(!symbol_table->add_variable(str.toStdString(), params[i]))
+            std::cout << "Error in symbol table\n";
+          i++;
+        }
+    }
+
+  QRegExp rx("[x-z][0-7]");
+  int pos = 0;
+  QStringList list;
+  while(((pos = rx.indexIn(equation_str, pos)) != -1) && !tracker.contains(rx.cap(0)))
+    {
+      tracker.push_back(rx.cap(0));
+      std::string str = rx.cap(0).toStdString().c_str();
+      // if(str=="x0"){symbol_table->add_variable(str, parent->parent->data_vec[X-1]);}
+      // if(str=="y0"){symbol_table->add_variable(str, parent->parent->data_vec[Y-1]);}
+      // if(str=="z0"){symbol_table->add_variable(str, parent->parent->data_vec[Z0-1]);}
+      // if(str=="z1"){symbol_table->add_variable(str, parent->parent->data_vec[Z1-1]);}
+      // if(str=="z2"){symbol_table->add_variable(str, parent->parent->data_vec[Z2-1]);}
+      // if(str=="z3"){symbol_table->add_variable(str, parent->parent->data_vec[Z3-1]);}
+      // if(str=="z4"){symbol_table->add_variable(str, parent->parent->data_vec[Z4-1]);}
+      // if(str=="z5"){symbol_table->add_variable(str, parent->parent->data_vec[Z5-1]);}
+      // if(str=="z6"){symbol_table->add_variable(str, parent->parent->data_vec[Z6-1]);}
+      // if(str=="z7"){symbol_table->add_variable(str, parent->parent->data_vec[Z7-1]);}
+      // if(str=="z8"){symbol_table->add_variable(str, parent->parent->data_vec[Z8-1]);}
+      // if(str=="z9"){symbol_table->add_variable(str, parent->parent->data_vec[Z9-1]);}
+      pos += rx.matchedLength();
+    }
+
+  expression->register_symbol_table(*symbol_table);
+  if(!parser->compile(equation_str.toStdString(), *expression))
+    printf("Error: %s\n", parser->error().c_str());
+
+  parent->parent->timePlot->addGraph();
+  // parent->parent->expression_vec.insert(expression, parent->parent->timePlot->graphCount()-1);
+  // parent->parent->ColorMapDataChooser_Obj->expression_vec.insert(expression, equation_str);
+  // parent->parent->ColorMapDataChooser_Obj->update_buttons();
+
+  box->setLayout(layout);
+  parent->layout->addWidget(box);
 }
