@@ -337,6 +337,7 @@ int AskForHeader::get_value()
 PlotContextMenu::PlotContextMenu(QCustomPlot * p, Window * w)
   : parent(p)
   , window_parent(w)
+  , xyz(&(w->xyz))
 {
   QAction * copy_action = new QAction(tr("&Copy"));
   addAction(copy_action);
@@ -370,7 +371,15 @@ PlotContextMenu::PlotContextMenu(QCustomPlot * p, Window * w)
   addAction(remove_action);
   connect(remove_action, &QAction::triggered, [this](){plottable->parentPlot()->removePlottable(plottable);plottable->parentPlot()->replot();});
 
-  QAction * set_as_z_action = new QAction(tr("&Z"));
+  QAction * set_as_x_action = new QAction(tr("&Set As X"));
+  addAction(set_as_x_action);
+  connect(set_as_x_action, &QAction::triggered, this, &PlotContextMenu::set_as_x_action_slot);
+
+  QAction * set_as_y_action = new QAction(tr("&Set As Y"));
+  addAction(set_as_y_action);
+  connect(set_as_y_action, &QAction::triggered, this, &PlotContextMenu::set_as_y_action_slot);
+
+  QAction * set_as_z_action = new QAction(tr("&Set As Z"));
   addAction(set_as_z_action);
   connect(set_as_z_action, &QAction::triggered, this, &PlotContextMenu::set_as_z_action_slot);
 }
@@ -483,7 +492,50 @@ void PlotContextMenu::filter_action_slot()
 }
 
 
+void PlotContextMenu::set_as_x_action_slot()
+{
+  window_parent->xyz.X = ((QCPGraph *)plottable)->data();
+}
+
+
+void PlotContextMenu::set_as_y_action_slot()
+{
+  window_parent->xyz.Y = ((QCPGraph *)plottable)->data();
+}
+
+
 void PlotContextMenu::set_as_z_action_slot()
 {
+  bool foundXRange, foundYRange;
+  QCPRange xRange = xyz->X->valueRange(foundXRange);
+  QCPRange yRange = xyz->Y->valueRange(foundYRange);
 
+  if(foundXRange && foundYRange)
+    window_parent->colorMap->data()->setRange(xRange, yRange);
+  else
+    std::cout << "PlotContextMenu::set_as_z_action_slot(): No Range was found for xy-plot.\n";
+
+  window_parent->colorMap->data()->fill(0.0);
+  xyz->Z = ((QCPGraph *)plottable)->data();
+
+  QCPDataContainer<QCPGraphData>::const_iterator startX = xyz->X->findBegin(window_parent->lowerLine->point1->key());
+  QCPDataContainer<QCPGraphData>::const_iterator endX   = xyz->X->findEnd(window_parent->upperLine->point1->key());
+  QCPDataContainer<QCPGraphData>::const_iterator startY = xyz->Y->findBegin(window_parent->lowerLine->point1->key());
+  QCPDataContainer<QCPGraphData>::const_iterator startZ = xyz->Z->findBegin(window_parent->lowerLine->point1->key());
+
+  int xInd, yInd;
+
+  for(auto itr = startX; itr!=endX; itr++)
+    {
+      double x = itr->value;
+      double y = startY->value;
+      double z = startZ->value;
+
+      window_parent->colorMap->data()->coordToCell(x,y,&xInd,&yInd);
+      window_parent->colorMap->data()->setCell(xInd,yInd,z);
+
+      startY++;
+      startZ++;
+    }
+    window_parent->xyPlot->replot();
 }

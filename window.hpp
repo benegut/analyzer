@@ -8,6 +8,15 @@
 
 class Window;
 
+
+typedef struct ColorMapDataHolder
+{
+  QSharedPointer< QCPGraphDataContainer > X;
+  QSharedPointer< QCPGraphDataContainer > Y;
+  QSharedPointer< QCPGraphDataContainer > Z;
+}XYZ;
+
+
 class PlotContextMenu : public QMenu
 {
   Q_OBJECT
@@ -20,6 +29,7 @@ private:
   Window *                window_parent;
   QCPAbstractPlottable *  plottable;
   QCustomPlot *           parent;
+  XYZ *                   xyz;
 
 public slots:
   void                    copy_action_slot();
@@ -30,6 +40,8 @@ public slots:
   void                    truncate_all_selection_accepted_slot();
   void                    truncate_at_cursor_action_slot();
   void                    truncate_all_at_cursor_action_slot();
+  void                    set_as_x_action_slot();
+  void                    set_as_y_action_slot();
   void                    set_as_z_action_slot();
 };
 
@@ -58,8 +70,10 @@ public:
   QCustomPlot *           xyPlot;
   QCPColorMap *           colorMap;
 
-  QCPItemStraightLine *           lowerLine;
-  QCPItemStraightLine *           upperLine;
+  QCPItemStraightLine *   lowerLine;
+  QCPItemStraightLine *   upperLine;
+
+  XYZ                     xyz;
 
 public slots:
   void                    open_action_slot();
