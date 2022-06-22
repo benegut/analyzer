@@ -158,7 +158,6 @@ private:
   void                    get_names_from_header_POLAND(std::string);
 
   PlotContextMenu *             plotcontextmenu;
-  QMap<int, std::string>        graph_label;
 
 protected:
   void contextMenuEvent(QContextMenuEvent *event) override;

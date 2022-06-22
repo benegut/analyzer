@@ -54,6 +54,8 @@ Window::Window()
 
   actions();
 
+  timePlot->legend->setVisible(true);
+
   resize(1700, 800);
   this->show();
 }
@@ -203,23 +205,22 @@ void Window::get_names_from_header_POLAND(std::string filename)
   int i = 0;
   while(getline(ss, number, '\t'))
       {
-        std::string label;
-        switch(number)
+        switch(std::stoi(number))
           {
-          case "1" : label = "X"; break;
-          case "2" : label = "Y"; break;
-          case "3" : label = "Z0"; break;
-          case "4" : label = "Z1"; break;
-          case "5" : label = "Z2"; break;
-          case "6" : label = "Z3"; break;
-          case "7" : label = "Z4"; break;
-          case "8" : label = "Z5"; break;
-          case "9" : label = "Z6"; break;
-          case "10" : label = "Z7"; break;
-          case "11" : label = "Z8"; break;
-          case "12" : label = "Z9"; break;
+          case 0 : timePlot->graph(i)->setName("OFF"); break;
+          case 1 : timePlot->graph(i)->setName("X"); break;
+          case 2 : timePlot->graph(i)->setName("Y"); break;
+          case 3 : timePlot->graph(i)->setName("Z0"); break;
+          case 4 : timePlot->graph(i)->setName("Z1"); break;
+          case 5 : timePlot->graph(i)->setName("Z2"); break;
+          case 6 : timePlot->graph(i)->setName("Z3"); break;
+          case 7 : timePlot->graph(i)->setName("Z4"); break;
+          case 8 : timePlot->graph(i)->setName("Z5"); break;
+          case 9 : timePlot->graph(i)->setName("Z6"); break;
+          case 10 : timePlot->graph(i)->setName("Z7"); break;
+          case 11 : timePlot->graph(i)->setName("Z8"); break;
+          case 12 : timePlot->graph(i)->setName("Z9"); break;
           }
-        graph_label.insert(i, label);
         i++;
       }
 }
