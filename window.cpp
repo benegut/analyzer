@@ -11,6 +11,7 @@ Window::Window()
   , xyPlot(new QCustomPlot)
   , colorMap(new QCPColorMap(xyPlot->xAxis, xyPlot->yAxis))
   , plotcontextmenu(new PlotContextMenu(timePlot, this))
+  , mathwindow(new MathWindow(this))
   , lowerLine(new QCPItemStraightLine(timePlot))
   , upperLine(new QCPItemStraightLine(timePlot))
 {
@@ -55,6 +56,9 @@ Window::Window()
   actions();
 
   timePlot->legend->setVisible(true);
+
+  for(int i = 0; i < 30; i++)
+    data_holder.push_back(0.0);
 
   resize(1700, 800);
   this->show();
@@ -225,6 +229,7 @@ void Window::get_names_from_header_POLAND(std::string filename)
       }
 }
 
+
 void Window::export_action_slot()
 {
 }
@@ -232,6 +237,7 @@ void Window::export_action_slot()
 
 void Window::math_action_slot()
 {
+  mathwindow->show();
 }
 
 
@@ -389,6 +395,25 @@ bool AskForPolandFile::get_value()
   return result;
 }
 
+
+AskForNewGraphName::AskForNewGraphName()
+{
+  QLabel *        label = new QLabel(this);
+  label->setText("Graphs new name ([u-w][0-9]):");
+  QLineEdit *     enter = new QLineEdit(this);
+  connect(enter, &QLineEdit::editingFinished, [this,enter](){name = enter->text();done(1);});
+  QVBoxLayout *   layout = new QVBoxLayout(this);
+  layout->addWidget(label);
+  layout->addWidget(enter);
+  setLayout(layout);
+  exec();
+}
+
+
+QString AskForNewGraphName::get_value()
+{
+  return name;
+}
 
 
 PlotContextMenu::PlotContextMenu(QCustomPlot * p, Window * w)
@@ -598,27 +623,43 @@ void PlotContextMenu::set_as_z_action_slot()
 }
 
 
+MathWindow::MathWindow(Window * parent)
+  : parent(parent)
+  , layout(new QGridLayout)
+  , entryField(new QLineEdit)
+  , eval_button(new QPushButton(tr("&Eval")))
+  , map(new QMap<QString, Equation*>)
+{
+  layout->addWidget(entryField, 0, 0);
+  layout->addWidget(eval_button, 0, 1);
+  setLayout(layout);
+
+  connect(eval_button, &QPushButton::clicked, this, &MathWindow::eval_slot);
+}
+
+
 void MathWindow::eval_slot()
 {
-  if(!map->contains(entryField->text()))
-    map->insert(entryField->text(), new Equation(entryField->text(), this));
+  QString str = entryField->text().simplified().replace(" ","").toLower();
+  if(!map->contains(str))
+    map->insert(str, new Equation(str, this));
 }
 
 
 
-Equation::Equation(QString e_str, MathWindow * parent)
-  : parent(parent)
-  , equation_str(e_str)
+Equation::Equation(QString e_str, MathWindow * p)
+  : parent(p)
+  , window_parent(p->parent)
   , layout(new QGridLayout)
-  , box(new QGroupBox(equation_str, this))
+  , box(new QGroupBox(e_str))
   , symbol_table(new exprtk::symbol_table<double>)
   , expression(new exprtk::expression<double>)
   , parser(new exprtk::parser<double>)
-  , params(std::vector<double>(100))
+  , parameters(std::vector<double>(100))
 {
   int i = 0;
   QVector<QString> tracker;
-  for(auto c: equation_str)
+  for(auto c: e_str)
     {
       QString str(c);
 
@@ -628,52 +669,44 @@ Equation::Equation(QString e_str, MathWindow * parent)
 
           QSlider * slider = new QSlider(Qt::Vertical, this);
           slider->setMaximum(100);
-          slider->setMinimum(-100);
-          slider->setSliderPosition(2);
+          slider->setMinimum(0);
+          slider->setSliderPosition(50);
           layout->addWidget(slider, 1, layout->columnCount());
           slider->show();
-          connect(slider, &QSlider::valueChanged, [this, slider, e_str, i, c](){this->params[i] = (double)slider->value();});
+          connect(slider, &QSlider::valueChanged, [this, slider, e_str, i, c](){this->parameters[i] = (double)slider->value();});
 
           QLabel *  label  = new QLabel(str, this);
           layout->addWidget(label, 0, layout->columnCount());
 
-          if(!symbol_table->add_variable(str.toStdString(), params[i]))
+          if(!symbol_table->add_variable(str.toStdString(), parameters[i]))
             std::cout << "Error in symbol table\n";
+
           i++;
         }
     }
 
-  QRegExp rx("[x-z][0-7]");
+  box->setLayout(layout);
+  parent->layout->addWidget(box);
+
+  QRegExp rx("[u-z][0-9]");
   int pos = 0;
   QStringList list;
-  while(((pos = rx.indexIn(equation_str, pos)) != -1) && !tracker.contains(rx.cap(0)))
+  while(((pos = rx.indexIn(e_str, pos)) != -1) && !tracker.contains(rx.cap(0)))
     {
       tracker.push_back(rx.cap(0));
-      std::string str = rx.cap(0).toStdString().c_str();
-      // if(str=="x0"){symbol_table->add_variable(str, parent->parent->data_vec[X-1]);}
-      // if(str=="y0"){symbol_table->add_variable(str, parent->parent->data_vec[Y-1]);}
-      // if(str=="z0"){symbol_table->add_variable(str, parent->parent->data_vec[Z0-1]);}
-      // if(str=="z1"){symbol_table->add_variable(str, parent->parent->data_vec[Z1-1]);}
-      // if(str=="z2"){symbol_table->add_variable(str, parent->parent->data_vec[Z2-1]);}
-      // if(str=="z3"){symbol_table->add_variable(str, parent->parent->data_vec[Z3-1]);}
-      // if(str=="z4"){symbol_table->add_variable(str, parent->parent->data_vec[Z4-1]);}
-      // if(str=="z5"){symbol_table->add_variable(str, parent->parent->data_vec[Z5-1]);}
-      // if(str=="z6"){symbol_table->add_variable(str, parent->parent->data_vec[Z6-1]);}
-      // if(str=="z7"){symbol_table->add_variable(str, parent->parent->data_vec[Z7-1]);}
-      // if(str=="z8"){symbol_table->add_variable(str, parent->parent->data_vec[Z8-1]);}
-      // if(str=="z9"){symbol_table->add_variable(str, parent->parent->data_vec[Z9-1]);}
+      std::string str = rx.cap(0).toLower().toStdString().c_str();
+      for(int i=0;i<window_parent->timePlot->graphCount();i++)
+        if(str == window_parent->timePlot->graph(i)->name().toLower().toStdString())
+          symbol_table->add_variable(str, window_parent->data_holder[i]);
       pos += rx.matchedLength();
     }
 
   expression->register_symbol_table(*symbol_table);
-  if(!parser->compile(equation_str.toStdString(), *expression))
+  if(!parser->compile(e_str.toStdString(), *expression))
     printf("Error: %s\n", parser->error().c_str());
 
-  parent->parent->timePlot->addGraph();
-  // parent->parent->expression_vec.insert(expression, parent->parent->timePlot->graphCount()-1);
-  // parent->parent->ColorMapDataChooser_Obj->expression_vec.insert(expression, equation_str);
-  // parent->parent->ColorMapDataChooser_Obj->update_buttons();
+  AskForNewGraphName dialog;
 
-  box->setLayout(layout);
-  parent->layout->addWidget(box);
+  window_parent->timePlot->addGraph();
+  window_parent->timePlot->graph()->setName(dialog.get_value());
 }

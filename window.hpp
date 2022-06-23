@@ -23,7 +23,7 @@ class Equation : public QWidget
   Q_OBJECT
 
 public:
-  Equation(QString, MathWindow *);
+                                  Equation(QString, MathWindow *);
   QGridLayout *                   layout;
   QGroupBox *                     box;
   exprtk::symbol_table<double>  * symbol_table;
@@ -32,9 +32,9 @@ public:
 
 
 private:
-  QString                     equation_str;
   MathWindow *                parent;
-  std::vector<double>         params;
+  Window *                    window_parent;
+  std::vector<double>         parameters;
 
 };
 
@@ -69,8 +69,8 @@ class PlotContextMenu : public QMenu
   Q_OBJECT
 
 public:
-  PlotContextMenu(QCustomPlot *, Window *);
-  void set_plottable(QCPAbstractPlottable *);
+        PlotContextMenu(QCustomPlot *, Window *);
+  void  set_plottable(QCPAbstractPlottable *);
 
 private:
   Window *                window_parent;
@@ -98,7 +98,7 @@ class AskForHeader : public QDialog
   Q_OBJECT
 
 public:
-  AskForHeader();
+      AskForHeader();
   int get_value();
 
 private:
@@ -111,11 +111,24 @@ class AskForPolandFile : public QDialog
   Q_OBJECT
 
 public:
-  AskForPolandFile();
-  bool get_value();
+        AskForPolandFile();
+  bool  get_value();
 
 private:
   bool result;
+};
+
+
+class AskForNewGraphName : public QDialog
+{
+  Q_OBJECT
+
+public:
+          AskForNewGraphName();
+  QString get_value();
+
+private:
+  QString name;
 };
 
 
@@ -133,7 +146,9 @@ public:
   QCPItemStraightLine *   lowerLine;
   QCPItemStraightLine *   upperLine;
 
-  XYZ                     xyz;
+  XYZ                                           xyz;
+  std::vector<double>                           data_holder;
+  std::vector<exprtk::expression<double>*>      expression_holder;
 
 public slots:
   void                    open_action_slot();
@@ -147,9 +162,7 @@ public slots:
   void                    change_lowerLine_position_slot(QMouseEvent *);
   void                    change_upperLine_position_slot(QMouseEvent *);
   void                    mouseRelease_slot();
-  void                    plottableClick_slot(QCPAbstractPlottable *,
-                                              int,
-                                              QMouseEvent *);
+  void                    plottableClick_slot(QCPAbstractPlottable *, int, QMouseEvent *);
   void                    mouseDoubleClick_slot(QMouseEvent *);
 
 private:
@@ -158,6 +171,7 @@ private:
   void                    get_names_from_header_POLAND(std::string);
 
   PlotContextMenu *             plotcontextmenu;
+  MathWindow *                  mathwindow;
 
 protected:
   void contextMenuEvent(QContextMenuEvent *event) override;
