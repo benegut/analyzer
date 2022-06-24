@@ -151,9 +151,20 @@ class VideoWindow : public QWidget
 public:
   VideoWindow(Window *);
 
+
 private:
-  Window *              parent;
-  QGridLayout *         layout;
+  Window *                parent;
+  QCustomPlot *           parent_plot;
+  QGridLayout *           layout;
+  QCPItemStraightLine *   video_line;
+
+public slots:
+  void                    show_slot();
+  void                    play_button_slot();
+  void                    fast_forward_button_slot();
+  void                    rewind_button_slot();
+  void                    picture_button_slot();
+  void                    video_button_slot();
 };
 
 
@@ -202,6 +213,7 @@ private:
 
   PlotContextMenu *             plotcontextmenu;
   MathWindow *                  mathwindow;
+  VideoWindow *                 videowindow;
 
 protected:
   void contextMenuEvent(QContextMenuEvent *event) override;

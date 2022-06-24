@@ -11,6 +11,7 @@ Window::Window()
   , colorMap(new QCPColorMap(xyPlot->xAxis, xyPlot->yAxis))
   , plotcontextmenu(new PlotContextMenu(timePlot, this))
   , mathwindow(new MathWindow(this))
+  , videowindow(new VideoWindow(this))
   , lowerLine(new QCPItemStraightLine(timePlot))
   , upperLine(new QCPItemStraightLine(timePlot))
 {
@@ -119,7 +120,7 @@ void Window::actions()
   tools->addAction(recalculate_math_graphs_action);
 
   QAction * video_widget_action = new QAction(tr("&Video"));
-  connect(video_widget_action, &QAction::triggered, [](){});
+  connect(video_widget_action, &QAction::triggered, videowindow, &VideoWindow::show_slot);
   tools->addAction(video_widget_action);
 }
 
@@ -781,16 +782,60 @@ void Window::recalculate_math_graphs_action_slot()
 
 VideoWindow::VideoWindow(Window * p)
   : parent(p)
+  , parent_plot(p->timePlot)
+  , layout(new QGridLayout(this))
+  , video_line(new QCPItemStraightLine(p->timePlot))
 {
   QPushButton * play_button = new  QPushButton(tr("&Play"));
-  connect(play_button, &QPushButton::clicked, [](){});
+  connect(play_button, &QPushButton::clicked, this, &VideoWindow::play_button_slot);
   layout->addWidget(play_button);
 
   QPushButton * fast_forward_button = new  QPushButton(tr("&>>"));
-  connect(fast_forward_button, &QPushButton::clicked, [](){});
+  connect(fast_forward_button, &QPushButton::clicked, this, &VideoWindow::fast_forward_button_slot);
   layout->addWidget(fast_forward_button);
 
   QPushButton * rewind_button = new  QPushButton(tr("&<<"));
-  connect(rewind_button, &QPushButton::clicked, [](){});
+  connect(rewind_button, &QPushButton::clicked, this, &VideoWindow::rewind_button_slot);
   layout->addWidget(rewind_button);
+
+  QPushButton * picture_button = new  QPushButton(tr("&Picture"));
+  connect(picture_button, &QPushButton::clicked, this, &VideoWindow::picture_button_slot);
+  layout->addWidget(picture_button);
+
+  QPushButton * video_button = new  QPushButton(tr("&Video"));
+  connect(video_button, &QPushButton::clicked, this, &VideoWindow::video_button_slot);
+  layout->addWidget(video_button);
+
+  setLayout(layout);
+}
+
+
+void VideoWindow::show_slot()
+{
+  this->show();
+}
+
+
+void VideoWindow::play_button_slot()
+{
+}
+
+
+void VideoWindow::fast_forward_button_slot()
+{
+}
+
+
+void VideoWindow::rewind_button_slot()
+{
+}
+
+
+void VideoWindow::picture_button_slot()
+{
+}
+
+
+void VideoWindow::video_button_slot()
+{
 }
