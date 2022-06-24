@@ -3,7 +3,6 @@
 #include <string>
 #include <sstream>
 #include <fstream>
-#include <vector>
 #include <cstdio>
 
 Window::Window()
@@ -56,9 +55,6 @@ Window::Window()
   actions();
 
   timePlot->legend->setVisible(true);
-
-  for(int i = 0; i < 30; i++)
-    data_holder.push_back(0.0);
 
   resize(1700, 800);
   this->show();
@@ -117,6 +113,14 @@ void Window::actions()
   QAction * range_cursor_action = new QAction(tr("&Cursor"));
   connect(range_cursor_action, &QAction::triggered, this, &Window::range_cursor_action_slot);
   tools->addAction(range_cursor_action);
+
+  QAction * recalculate_math_graphs_action = new QAction(tr("&Recalculate"));
+  connect(recalculate_math_graphs_action, &QAction::triggered, this, &Window::recalculate_math_graphs_action_slot);
+  tools->addAction(recalculate_math_graphs_action);
+
+  QAction * video_widget_action = new QAction(tr("&Video"));
+  connect(video_widget_action, &QAction::triggered, [](){});
+  tools->addAction(video_widget_action);
 }
 
 
@@ -643,70 +647,150 @@ void MathWindow::eval_slot()
   QString str = entryField->text().simplified().replace(" ","").toLower();
   if(!map->contains(str))
     map->insert(str, new Equation(str, this));
+
+  close();
 }
 
 
 
-Equation::Equation(QString e_str, MathWindow * p)
+Equation::Equation(QString equation, MathWindow * p)
   : parent(p)
   , window_parent(p->parent)
   , layout(new QGridLayout)
-  , box(new QGroupBox(e_str))
+  , box(new QGroupBox(p))
   , symbol_table(new exprtk::symbol_table<double>)
   , expression(new exprtk::expression<double>)
   , parser(new exprtk::parser<double>)
-  , parameters(std::vector<double>(100))
 {
-  int i = 0;
-  QVector<QString> tracker;
-  for(auto c: e_str)
+  if(!window_parent->expression_holder.contains(window_parent->equation_to_name[equation]))
     {
-      QString str(c);
+      parameters.reserve(100);
 
-      if(str.contains(QRegExp("[a-m]")) && !tracker.contains(str))
+      // register parameters
+      for(auto c: equation)
         {
-          tracker.push_back(str);
+          QString str(c);
 
-          QSlider * slider = new QSlider(Qt::Vertical, this);
-          slider->setMaximum(100);
-          slider->setMinimum(0);
-          slider->setSliderPosition(50);
-          layout->addWidget(slider, 1, layout->columnCount());
-          slider->show();
-          connect(slider, &QSlider::valueChanged, [this, slider, e_str, i, c](){this->parameters[i] = (double)slider->value();});
+          if(str.contains(QRegExp("[a-m]")) && !parameters.contains(str))
+            {
+              parameters.insert(str, 1.0);
 
-          QLabel *  label  = new QLabel(str, this);
-          layout->addWidget(label, 0, layout->columnCount());
+              QSlider * slider = new QSlider(Qt::Vertical, this);
+              slider->setMaximum(100);
+              slider->setMinimum(0);
+              slider->setSliderPosition(100);
+              layout->addWidget(slider, 1, layout->columnCount());
+              connect(slider, &QSlider::valueChanged, [this, slider, equation, str](){this->parameters[str] = (double)slider->value()/100.0;});
 
-          if(!symbol_table->add_variable(str.toStdString(), parameters[i]))
-            std::cout << "Error in symbol table\n";
+              QLabel *  label  = new QLabel(str, this);
+              layout->addWidget(label, 0, layout->columnCount());
 
-          i++;
+              if(!symbol_table->add_variable(str.toStdString(), parameters[str]))
+                std::cout << "Error in symbol table\n";
+            }
         }
+
+
+      // register variables
+      QRegExp rx("[u-z][0-9]");
+      int pos = 0;
+      while(((pos = rx.indexIn(equation, pos)) != -1) && !parameters.contains(rx.cap(0)))
+        {
+          parameters.insert(rx.cap(0), 0.0);
+          QString str = rx.cap(0).toUpper();
+          for(int i=0;i<window_parent->timePlot->graphCount();i++)
+            {
+              if(str == window_parent->timePlot->graph(i)->name().toUpper() &&
+                 window_parent->data_holder.contains(str))
+                symbol_table->add_variable(str.toStdString(), window_parent->data_holder[str]);
+              else if(str == window_parent->timePlot->graph(i)->name().toUpper() &&
+                      !window_parent->data_holder.contains(str))
+                {
+                  window_parent->data_holder.insert(str, 0.0);
+                  symbol_table->add_variable(str.toStdString(), window_parent->data_holder[str]);
+                }
+            }
+          pos += rx.matchedLength();
+        }
+
+
+      // compile expression
+      expression->register_symbol_table(*symbol_table);
+      if(!parser->compile(equation.toStdString(), *expression))
+        printf("Error: %s\n", parser->error().c_str());
+
+
+      // set name for expression, and calculate graph
+      QString name;
+      do
+        {
+          AskForNewGraphName dialog;
+          name = dialog.get_value();
+        }
+      while(window_parent->data_holder.contains(name));
+
+      window_parent->data_holder.insert(name, 0.0);
+      window_parent->expression_holder.insert(name, expression);
+      window_parent->name_to_equation.insert(name, equation);
+      window_parent->equation_to_name.insert(equation, name);
+
+      window_parent->timePlot->addGraph();
+      window_parent->timePlot->graph()->setName(name);
+      window_parent->recalculate_math_graphs_action_slot();
+      window_parent->timePlot->replot();
+
+      box->setLayout(layout);
+      box->setTitle(equation + " / " + name);
+      parent->layout->addWidget(box);
     }
+}
 
-  box->setLayout(layout);
-  parent->layout->addWidget(box);
 
-  QRegExp rx("[u-z][0-9]");
-  int pos = 0;
-  QStringList list;
-  while(((pos = rx.indexIn(e_str, pos)) != -1) && !tracker.contains(rx.cap(0)))
+void Window::recalculate_math_graphs_action_slot()
+{
+  bool foundRange;
+  double first_key = timePlot->graph(0)->getKeyRange(foundRange).lower;
+  double last_key  = timePlot->graph(0)->getKeyRange(foundRange).upper;
+
+  for(int i=1;i<timePlot->graphCount();i++)
     {
-      tracker.push_back(rx.cap(0));
-      std::string str = rx.cap(0).toLower().toStdString().c_str();
-      for(int i=0;i<window_parent->timePlot->graphCount();i++)
-        if(str == window_parent->timePlot->graph(i)->name().toLower().toStdString())
-          symbol_table->add_variable(str, window_parent->data_holder[i]);
-      pos += rx.matchedLength();
+      first_key = timePlot->graph(i)->getKeyRange(foundRange).lower > first_key ? timePlot->graph(i)->getKeyRange(foundRange).lower : first_key;
+      last_key  = timePlot->graph(i)->getKeyRange(foundRange).upper > last_key  ? timePlot->graph(i)->getKeyRange(foundRange).upper : last_key;
     }
 
-  expression->register_symbol_table(*symbol_table);
-  if(!parser->compile(e_str.toStdString(), *expression))
-    printf("Error: %s\n", parser->error().c_str());
+  for(auto e : expression_holder.keys())
+    for(int i = 0; i<timePlot->graphCount(); i++)
+      if(timePlot->graph(i)->name() == e)
+        timePlot->graph(i)->data()->clear();
 
-  AskForNewGraphName dialog;
+  for(int k = first_key; k < last_key; k++)
+    {
+      for(int i = 0; i<timePlot->graphCount(); i++)
+        data_holder[timePlot->graph(i)->name()] = timePlot->graph(i)->data()->findBegin(k)->value;
 
-  window_parent->timePlot->addGraph();
-  window_parent->timePlot->graph()->setName(dialog.get_value());
+      for(auto e : expression_holder.keys())
+        for(int i = 0; i<timePlot->graphCount(); i++)
+          if(timePlot->graph(i)->name() == e)
+            timePlot->graph(i)->addData(k,expression_holder[e]->value());
+    }
+
+  timePlot->replot();
+}
+
+
+
+VideoWindow::VideoWindow(Window * p)
+  : parent(p)
+{
+  QPushButton * play_button = new  QPushButton(tr("&Play"));
+  connect(play_button, &QPushButton::clicked, [](){});
+  layout->addWidget(play_button);
+
+  QPushButton * fast_forward_button = new  QPushButton(tr("&>>"));
+  connect(fast_forward_button, &QPushButton::clicked, [](){});
+  layout->addWidget(fast_forward_button);
+
+  QPushButton * rewind_button = new  QPushButton(tr("&<<"));
+  connect(rewind_button, &QPushButton::clicked, [](){});
+  layout->addWidget(rewind_button);
 }

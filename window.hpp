@@ -6,7 +6,6 @@
 #include "qcustomplot.h"
 #include <exprtk.hpp>
 #include <string>
-#include <vector>
 
 
 typedef enum
@@ -32,9 +31,9 @@ public:
 
 
 private:
-  MathWindow *                parent;
-  Window *                    window_parent;
-  std::vector<double>         parameters;
+  MathWindow *                 parent;
+  Window *                     window_parent;
+  QHash<QString, double>       parameters;
 
 };
 
@@ -54,6 +53,7 @@ public:
 public slots:
   void                        eval_slot();
 };
+
 
 
 typedef struct ColorMapDataHolder
@@ -93,6 +93,9 @@ public slots:
 };
 
 
+
+
+
 class AskForHeader : public QDialog
 {
   Q_OBJECT
@@ -104,6 +107,9 @@ public:
 private:
   int headers_value;
 };
+
+
+
 
 
 class AskForPolandFile : public QDialog
@@ -119,6 +125,9 @@ private:
 };
 
 
+
+
+
 class AskForNewGraphName : public QDialog
 {
   Q_OBJECT
@@ -130,6 +139,24 @@ public:
 private:
   QString name;
 };
+
+
+
+
+
+class VideoWindow : public QWidget
+{
+  Q_OBJECT
+
+public:
+  VideoWindow(Window *);
+
+private:
+  Window *              parent;
+  QGridLayout *         layout;
+};
+
+
 
 
 class Window : public QMainWindow
@@ -146,9 +173,11 @@ public:
   QCPItemStraightLine *   lowerLine;
   QCPItemStraightLine *   upperLine;
 
-  XYZ                                           xyz;
-  std::vector<double>                           data_holder;
-  std::vector<exprtk::expression<double>*>      expression_holder;
+  XYZ                                          xyz;
+  QHash<QString, double>                       data_holder;
+  QHash<QString, exprtk::expression<double>*>  expression_holder;
+  QHash<QString, QString>                      name_to_equation;
+  QHash<QString, QString>                      equation_to_name;
 
 public slots:
   void                    open_action_slot();
@@ -164,6 +193,7 @@ public slots:
   void                    mouseRelease_slot();
   void                    plottableClick_slot(QCPAbstractPlottable *, int, QMouseEvent *);
   void                    mouseDoubleClick_slot(QMouseEvent *);
+  void                    recalculate_math_graphs_action_slot();
 
 private:
   void                    actions();
