@@ -786,6 +786,11 @@ VideoWindow::VideoWindow(Window * p)
   , layout(new QGridLayout(this))
   , video_line(new QCPItemStraightLine(p->timePlot))
 {
+  video_line->point1->setCoords(0, 0);
+  video_line->point2->setCoords(0, 100);
+  video_line->setVisible(false);
+  video_line->setSelectable(false);
+
   QPushButton * play_button = new  QPushButton(tr("&Play"));
   connect(play_button, &QPushButton::clicked, this, &VideoWindow::play_button_slot);
   layout->addWidget(play_button);
@@ -813,6 +818,7 @@ VideoWindow::VideoWindow(Window * p)
 void VideoWindow::show_slot()
 {
   this->show();
+  video_line->setVisible(true);
 }
 
 
