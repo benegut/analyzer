@@ -4,6 +4,7 @@
 #include <sstream>
 #include <fstream>
 #include <cstdio>
+#include <unistd.h>
 
 Window::Window()
   : timePlot(new QCustomPlot)
@@ -12,8 +13,10 @@ Window::Window()
   , plotcontextmenu(new PlotContextMenu(timePlot, this))
   , mathwindow(new MathWindow(this))
   , videowindow(new VideoWindow(this))
+  , videorunner(new VideoRunner(this))
   , lowerLine(new QCPItemStraightLine(timePlot))
   , upperLine(new QCPItemStraightLine(timePlot))
+  , toolbar(new QToolBar(this))
 {
   QSplitter * splitter = new QSplitter;
   splitter->addWidget(timePlot);
@@ -59,6 +62,9 @@ Window::Window()
 
   resize(1700, 800);
   this->show();
+
+  connect(videorunner, &VideoRunner::data, this, &Window::data);
+  connect(videorunner, &VideoRunner::replot_signal, this, &Window::replot_slot);
 }
 
 
@@ -122,6 +128,38 @@ void Window::actions()
   QAction * video_widget_action = new QAction(tr("&Video"));
   connect(video_widget_action, &QAction::triggered, videowindow, &VideoWindow::show_slot);
   tools->addAction(video_widget_action);
+
+  addToolBar(toolbar);
+
+  QLabel * sizebox_label = new QLabel(QString("Resolution:"), this);
+  toolbar->addWidget(sizebox_label);
+  sizebox = new QSpinBox(this);
+  sizebox->setMaximum(400);
+  sizebox->setMinimum(50);
+  sizebox->setSingleStep(10);
+  sizebox->setValue(200);
+  QAction * sizebox_action = toolbar->addWidget(sizebox);
+  connect(sizebox, qOverload<int>(&QSpinBox::valueChanged), this, &Window::sizebox_slot);
+
+  QLabel * greyscale_offset_label = new QLabel(QString("BW-Offset:"), this);
+  toolbar->addWidget(greyscale_offset_label);
+  greyscale_offset_box = new QDoubleSpinBox(this);
+  greyscale_offset_box->setMaximum(100);
+  greyscale_offset_box->setMinimum(100);
+  greyscale_offset_box->setSingleStep(0.1);
+  greyscale_offset_box->setValue(0);
+  QAction * greyscale_offset_box_action = toolbar->addWidget(greyscale_offset_box);
+  connect(greyscale_offset_box, qOverload<double>(&QDoubleSpinBox::valueChanged), this, &Window::greyscale_offset_box_slot);
+
+  QLabel * greyscale_range_label = new QLabel(QString("BW-Range:"), this);
+  toolbar->addWidget(greyscale_range_label);
+  greyscale_amplitude_box = new QDoubleSpinBox(this);
+  greyscale_amplitude_box->setMaximum(20);
+  greyscale_amplitude_box->setMinimum(0);
+  greyscale_amplitude_box->setSingleStep(0.1);
+  greyscale_amplitude_box->setValue(1);
+  QAction * greyscale_amplitude_box_action = toolbar->addWidget(greyscale_amplitude_box);
+  connect(greyscale_amplitude_box, qOverload<double>(&QDoubleSpinBox::valueChanged), this, &Window::greyscale_amplitude_box_slot);
 }
 
 
@@ -354,6 +392,35 @@ void Window::contextMenuEvent(QContextMenuEvent *event)
 {
   QMenu menu(this);
   menu.exec(event->globalPos());
+}
+
+
+void Window::data(double x, double y, double z, double k)
+{
+  int xInd, yInd;
+
+  colorMap->data()->coordToCell(x,y,&xInd,&yInd);
+  colorMap->data()->setCell(xInd,yInd,z);
+
+  videowindow->video_line->point1->setCoords(k, 0);
+  videowindow->video_line->point2->setCoords(k,100);
+}
+
+
+void Window::replot_slot()
+{
+  timePlot->replot();
+  xyPlot->replot();
+}
+
+
+void Window::greyscale_offset_box_slot(double value)
+{
+}
+
+
+void Window::greyscale_amplitude_box_slot(double value)
+{
 }
 
 
@@ -779,19 +846,25 @@ void Window::recalculate_math_graphs_action_slot()
 }
 
 
+void Window::sizebox_slot(int size)
+{
+  colorMap->data()->setSize(size, size);
+  xyPlot->replot();
+}
+
 
 VideoWindow::VideoWindow(Window * p)
   : parent(p)
   , parent_plot(p->timePlot)
   , layout(new QGridLayout(this))
   , video_line(new QCPItemStraightLine(p->timePlot))
+  , play_button(new QPushButton(tr("&Play")))
 {
   video_line->point1->setCoords(0, 0);
   video_line->point2->setCoords(0, 100);
   video_line->setVisible(false);
   video_line->setSelectable(false);
 
-  QPushButton * play_button = new  QPushButton(tr("&Play"));
   connect(play_button, &QPushButton::clicked, this, &VideoWindow::play_button_slot);
   layout->addWidget(play_button);
 
@@ -812,6 +885,9 @@ VideoWindow::VideoWindow(Window * p)
   layout->addWidget(video_button);
 
   setLayout(layout);
+
+  connect(parent->timePlot, &QCustomPlot::mousePress, this, &VideoWindow::mousePress_slot);
+  connect(parent->timePlot, &QCustomPlot::mouseRelease, this, &VideoWindow::mouseRelease_slot);
 }
 
 
@@ -824,6 +900,16 @@ void VideoWindow::show_slot()
 
 void VideoWindow::play_button_slot()
 {
+  if(!parent->videorunner->video_is_running)
+    {
+      play_button->setText(tr("&Stop"));
+      parent->videorunner->start();
+    }
+  else
+    {
+      parent->videorunner->video_is_running = false;
+      play_button->setText(tr("&Play"));
+    }
 }
 
 
@@ -844,4 +930,75 @@ void VideoWindow::picture_button_slot()
 
 void VideoWindow::video_button_slot()
 {
+}
+
+
+void VideoWindow::mousePress_slot(QMouseEvent * event)
+{
+  if((event->pos().x() > video_line->point1->pixelPosition().x()-3) &&
+     (event->pos().x() < video_line->point1->pixelPosition().x()+3) &&
+     video_line->realVisibility())
+    {
+      connect(parent->timePlot, &QCustomPlot::mouseMove, this, &VideoWindow::change_video_line_position_slot);
+      parent->timePlot->setInteraction(QCP::iRangeDrag, false);
+    }
+}
+
+
+void VideoWindow::change_video_line_position_slot(QMouseEvent * event)
+{
+  video_line->point1->setCoords(parent->timePlot->xAxis->pixelToCoord(event->pos().x()), 0);
+  video_line->point2->setCoords(parent->timePlot->xAxis->pixelToCoord(event->pos().x()),100);
+  parent->timePlot->replot();
+}
+
+
+void VideoWindow::mouseRelease_slot()
+{
+  disconnect(parent->timePlot, &QCustomPlot::mouseMove, this, &VideoWindow::change_video_line_position_slot);
+  parent->timePlot->setInteraction(QCP::iRangeDrag, true);
+}
+
+
+
+VideoRunner::VideoRunner(Window * p)
+  : parent(p)
+  , video_is_running(false)
+{
+}
+
+
+void VideoRunner::run()
+{
+  QCPDataContainer<QCPGraphData>::const_iterator startX = parent->xyz.X->findBegin(parent->videowindow->video_line->point1->key());
+  QCPDataContainer<QCPGraphData>::const_iterator endX   = parent->xyz.X->constEnd();
+  QCPDataContainer<QCPGraphData>::const_iterator startY = parent->xyz.Y->findBegin(parent->videowindow->video_line->point1->key());
+  QCPDataContainer<QCPGraphData>::const_iterator startZ = parent->xyz.Z->findBegin(parent->videowindow->video_line->point1->key());
+
+  int counter = 0;
+
+  auto itr = startX;
+
+  video_is_running = true;
+
+  while(video_is_running && itr != endX)
+    {
+      double k = itr->key;
+      double x = itr->value;
+      double y = startY->value;
+      double z = startZ->value;
+
+      emit(data(x,y,z,k));
+
+      itr++;
+      startY++;
+      startZ++;
+
+      if(counter%1000 == 0)
+        emit(replot_signal());
+
+      counter++;
+
+      usleep(1);
+    }
 }

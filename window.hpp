@@ -16,6 +16,7 @@ typedef enum
 
 class Window;
 class MathWindow;
+class VideoRunner;
 
 class Equation : public QWidget
 {
@@ -150,13 +151,15 @@ class VideoWindow : public QWidget
 
 public:
   VideoWindow(Window *);
+  QCPItemStraightLine *   video_line;
+
+  QPushButton *           play_button;
 
 
 private:
   Window *                parent;
   QCustomPlot *           parent_plot;
   QGridLayout *           layout;
-  QCPItemStraightLine *   video_line;
 
 public slots:
   void                    show_slot();
@@ -165,6 +168,9 @@ public slots:
   void                    rewind_button_slot();
   void                    picture_button_slot();
   void                    video_button_slot();
+  void                    mousePress_slot(QMouseEvent *);
+  void                    mouseRelease_slot();
+  void                    change_video_line_position_slot(QMouseEvent *);
 };
 
 
@@ -190,6 +196,9 @@ public:
   QHash<QString, QString>                      name_to_equation;
   QHash<QString, QString>                      equation_to_name;
 
+  VideoWindow *                 videowindow;
+  VideoRunner *                 videorunner;
+
 public slots:
   void                    open_action_slot();
   void                    save_action_slot();
@@ -205,18 +214,45 @@ public slots:
   void                    plottableClick_slot(QCPAbstractPlottable *, int, QMouseEvent *);
   void                    mouseDoubleClick_slot(QMouseEvent *);
   void                    recalculate_math_graphs_action_slot();
+  void                    data(double, double, double, double);
+  void                    replot_slot();
+  void                    sizebox_slot(int);
+  void                    greyscale_offset_box_slot(double);
+  void                    greyscale_amplitude_box_slot(double);
 
 private:
   void                    actions();
   void                    load_file(std::string, int);
   void                    get_names_from_header_POLAND(std::string);
 
+  QToolBar *                    toolbar;
+  QSpinBox *                    sizebox;
+  QDoubleSpinBox *              greyscale_offset_box;
+  QDoubleSpinBox *              greyscale_amplitude_box;
   PlotContextMenu *             plotcontextmenu;
   MathWindow *                  mathwindow;
-  VideoWindow *                 videowindow;
 
 protected:
   void contextMenuEvent(QContextMenuEvent *event) override;
+
+};
+
+
+class VideoRunner : public QThread
+{
+  Q_OBJECT
+
+public:
+  VideoRunner(Window *);
+  void  run() override;
+  bool video_is_running;
+
+private:
+  Window *    parent;
+
+signals:
+  void data(double, double, double, double);
+  void replot_signal();
 
 };
 
