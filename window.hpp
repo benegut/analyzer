@@ -217,18 +217,22 @@ public slots:
   void                    data(double, double, double, double);
   void                    replot_slot();
   void                    sizebox_slot(int);
-  void                    greyscale_offset_box_slot(double);
-  void                    greyscale_amplitude_box_slot(double);
+  void                    set_greyscale();
+  void                    greyscale_rect_action_slot();
+  void                    set_greyscale_from_selection_rect_start(QMouseEvent *);
+  void                    set_greyscale_from_selection_rect_accepted(QRect, QMouseEvent *);
 
 private:
   void                    actions();
   void                    load_file(std::string, int);
   void                    get_names_from_header_POLAND(std::string);
+  void                    calculate_greyscale();
 
   QToolBar *                    toolbar;
   QSpinBox *                    sizebox;
   QDoubleSpinBox *              greyscale_offset_box;
   QDoubleSpinBox *              greyscale_amplitude_box;
+  double                        greyscale_raw_value_1, greyscale_raw_value_2;
   PlotContextMenu *             plotcontextmenu;
   MathWindow *                  mathwindow;
 

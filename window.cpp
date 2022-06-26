@@ -149,7 +149,7 @@ void Window::actions()
   greyscale_offset_box->setSingleStep(0.1);
   greyscale_offset_box->setValue(0);
   QAction * greyscale_offset_box_action = toolbar->addWidget(greyscale_offset_box);
-  connect(greyscale_offset_box, qOverload<double>(&QDoubleSpinBox::valueChanged), this, &Window::greyscale_offset_box_slot);
+  connect(greyscale_offset_box, qOverload<double>(&QDoubleSpinBox::valueChanged), this, &Window::set_greyscale);
 
   QLabel * greyscale_range_label = new QLabel(QString("BW-Range:"), this);
   toolbar->addWidget(greyscale_range_label);
@@ -159,7 +159,14 @@ void Window::actions()
   greyscale_amplitude_box->setSingleStep(0.1);
   greyscale_amplitude_box->setValue(1);
   QAction * greyscale_amplitude_box_action = toolbar->addWidget(greyscale_amplitude_box);
-  connect(greyscale_amplitude_box, qOverload<double>(&QDoubleSpinBox::valueChanged), this, &Window::greyscale_amplitude_box_slot);
+  connect(greyscale_amplitude_box, qOverload<double>(&QDoubleSpinBox::valueChanged), this, &Window::set_greyscale);
+
+  QAction * greyscale_rect_action = new QAction(tr("&BW-Rect"));
+  connect(greyscale_rect_action, &QAction::triggered, this, &Window::greyscale_rect_action_slot);
+  tools->addAction(greyscale_rect_action);
+
+  connect(timePlot->selectionRect(), &QCPSelectionRect::started, this, &Window::set_greyscale_from_selection_rect_start);
+  connect(timePlot->selectionRect(), &QCPSelectionRect::accepted, this, &Window::set_greyscale_from_selection_rect_accepted);
 }
 
 
@@ -414,13 +421,46 @@ void Window::replot_slot()
 }
 
 
-void Window::greyscale_offset_box_slot(double value)
+void Window::set_greyscale()
 {
+  double amplitude = greyscale_amplitude_box->value();
+  double offset    = greyscale_offset_box->value();
+  colorMap->setDataRange(QCPRange(offset-amplitude, offset+amplitude));
+  xyPlot->replot();
 }
 
 
-void Window::greyscale_amplitude_box_slot(double value)
+void Window::greyscale_rect_action_slot()
 {
+  timePlot->setSelectionRectMode(QCP::srmCustom);
+  // timePlot->setInteraction(QCP::stNone);
+}
+
+
+void Window::set_greyscale_from_selection_rect_start(QMouseEvent * event)
+{
+  greyscale_raw_value_1 = timePlot->yAxis->pixelToCoord(event->y());
+}
+
+
+void Window::set_greyscale_from_selection_rect_accepted(QRect rect, QMouseEvent * event)
+{
+  greyscale_raw_value_2 = timePlot->yAxis->pixelToCoord(event->y());
+  calculate_greyscale();
+  double amplitude = greyscale_amplitude_box->value();
+  double offset    = greyscale_offset_box->value();
+  colorMap->setDataRange(QCPRange(offset-amplitude, offset+amplitude));
+  colorMap->data()->fill(offset);
+  xyPlot->replot();
+}
+
+
+void Window::calculate_greyscale()
+{
+  double amplitude = greyscale_raw_value_1 > greyscale_raw_value_2 ? (greyscale_raw_value_1 - greyscale_raw_value_2)/2.0 : (greyscale_raw_value_2 - greyscale_raw_value_1)/2.0;
+  greyscale_amplitude_box->setValue(amplitude);
+  double offset = greyscale_raw_value_1 > greyscale_raw_value_2 ? greyscale_raw_value_2+amplitude : greyscale_raw_value_1+amplitude;
+  greyscale_offset_box->setValue(offset);
 }
 
 
