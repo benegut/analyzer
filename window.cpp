@@ -5,6 +5,7 @@
 #include <fstream>
 #include <cstdio>
 #include <unistd.h>
+#include <arrayfire.h>
 
 Window::Window()
   : timePlot(new QCustomPlot)
@@ -144,9 +145,9 @@ void Window::actions()
   QLabel * greyscale_offset_label = new QLabel(QString("BW-Offset:"), this);
   toolbar->addWidget(greyscale_offset_label);
   greyscale_offset_box = new QDoubleSpinBox(this);
-  greyscale_offset_box->setMaximum(100);
-  greyscale_offset_box->setMinimum(100);
-  greyscale_offset_box->setSingleStep(0.1);
+  greyscale_offset_box->setMaximum(100000);
+  greyscale_offset_box->setMinimum(-100000);
+  greyscale_offset_box->setSingleStep(1);
   greyscale_offset_box->setValue(0);
   QAction * greyscale_offset_box_action = toolbar->addWidget(greyscale_offset_box);
   connect(greyscale_offset_box, qOverload<double>(&QDoubleSpinBox::valueChanged), this, &Window::set_greyscale);
@@ -154,9 +155,9 @@ void Window::actions()
   QLabel * greyscale_range_label = new QLabel(QString("BW-Range:"), this);
   toolbar->addWidget(greyscale_range_label);
   greyscale_amplitude_box = new QDoubleSpinBox(this);
-  greyscale_amplitude_box->setMaximum(20);
+  greyscale_amplitude_box->setMaximum(100000);
   greyscale_amplitude_box->setMinimum(0);
-  greyscale_amplitude_box->setSingleStep(0.1);
+  greyscale_amplitude_box->setSingleStep(1);
   greyscale_amplitude_box->setValue(1);
   QAction * greyscale_amplitude_box_action = toolbar->addWidget(greyscale_amplitude_box);
   connect(greyscale_amplitude_box, qOverload<double>(&QDoubleSpinBox::valueChanged), this, &Window::set_greyscale);
@@ -433,7 +434,6 @@ void Window::set_greyscale()
 void Window::greyscale_rect_action_slot()
 {
   timePlot->setSelectionRectMode(QCP::srmCustom);
-  // timePlot->setInteraction(QCP::stNone);
 }
 
 
@@ -446,21 +446,16 @@ void Window::set_greyscale_from_selection_rect_start(QMouseEvent * event)
 void Window::set_greyscale_from_selection_rect_accepted(QRect rect, QMouseEvent * event)
 {
   greyscale_raw_value_2 = timePlot->yAxis->pixelToCoord(event->y());
-  calculate_greyscale();
-  double amplitude = greyscale_amplitude_box->value();
-  double offset    = greyscale_offset_box->value();
+
+  double amplitude = greyscale_raw_value_1 > greyscale_raw_value_2 ? (greyscale_raw_value_1 - greyscale_raw_value_2)/2.0 : (greyscale_raw_value_2 - greyscale_raw_value_1)/2.0;
+  double offset = greyscale_raw_value_1 > greyscale_raw_value_2 ? greyscale_raw_value_2+amplitude : greyscale_raw_value_1+amplitude;
+  greyscale_amplitude_box->setValue(amplitude);
+  greyscale_offset_box->setValue(offset);
   colorMap->setDataRange(QCPRange(offset-amplitude, offset+amplitude));
   colorMap->data()->fill(offset);
   xyPlot->replot();
-}
-
-
-void Window::calculate_greyscale()
-{
-  double amplitude = greyscale_raw_value_1 > greyscale_raw_value_2 ? (greyscale_raw_value_1 - greyscale_raw_value_2)/2.0 : (greyscale_raw_value_2 - greyscale_raw_value_1)/2.0;
-  greyscale_amplitude_box->setValue(amplitude);
-  double offset = greyscale_raw_value_1 > greyscale_raw_value_2 ? greyscale_raw_value_2+amplitude : greyscale_raw_value_1+amplitude;
-  greyscale_offset_box->setValue(offset);
+  timePlot->replot();
+  timePlot->setSelectionRectMode(QCP::srmNone);
 }
 
 
@@ -732,6 +727,27 @@ void PlotContextMenu::set_as_z_action_slot()
       startZ++;
     }
     window_parent->xyPlot->replot();
+}
+
+
+
+FilterContextMenu::FilterContextMenu(PlotContextMenu * p)
+  :parent(p)
+{
+  QAction * moving_average_action = new QAction(tr("&Moving average"));
+  addAction(moving_average_action);
+  connect(moving_average_action, &QAction::triggered, this, &PlotContextMenu::moving_average_action_slot);
+}
+
+
+
+void FilterContextMenu::set_plottable()
+{
+}
+
+
+void FilterContextMenu::moving_average_action_slot()
+{
 }
 
 
@@ -1010,10 +1026,14 @@ VideoRunner::VideoRunner(Window * p)
 
 void VideoRunner::run()
 {
-  QCPDataContainer<QCPGraphData>::const_iterator startX = parent->xyz.X->findBegin(parent->videowindow->video_line->point1->key());
-  QCPDataContainer<QCPGraphData>::const_iterator endX   = parent->xyz.X->constEnd();
-  QCPDataContainer<QCPGraphData>::const_iterator startY = parent->xyz.Y->findBegin(parent->videowindow->video_line->point1->key());
-  QCPDataContainer<QCPGraphData>::const_iterator startZ = parent->xyz.Z->findBegin(parent->videowindow->video_line->point1->key());
+  x.set(*(parent->xyz.X));
+  y.set(*(parent->xyz.Y));
+  z.set(*(parent->xyz.Z));
+
+  QCPDataContainer<QCPGraphData>::const_iterator startX = x.findBegin(parent->videowindow->video_line->point1->key());
+  QCPDataContainer<QCPGraphData>::const_iterator endX   = x.constEnd();
+  QCPDataContainer<QCPGraphData>::const_iterator startY = y.findBegin(parent->videowindow->video_line->point1->key());
+  QCPDataContainer<QCPGraphData>::const_iterator startZ = z.findBegin(parent->videowindow->video_line->point1->key());
 
   int counter = 0;
 
@@ -1023,12 +1043,12 @@ void VideoRunner::run()
 
   while(video_is_running && itr != endX)
     {
-      double k = itr->key;
-      double x = itr->value;
-      double y = startY->value;
-      double z = startZ->value;
+      double k_val = itr->key;
+      double x_val = itr->value;
+      double y_val = startY->value;
+      double z_val = startZ->value;
 
-      emit(data(x,y,z,k));
+      emit(data(x_val,y_val,z_val,k_val));
 
       itr++;
       startY++;
@@ -1039,6 +1059,6 @@ void VideoRunner::run()
 
       counter++;
 
-      usleep(1);
+      usleep(0.05);
     }
 }

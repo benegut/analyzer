@@ -95,6 +95,23 @@ public slots:
 
 
 
+class FilterContextMenu : public QMenu
+{
+  Q_OBJECT
+
+public:
+  FilterContextMenu();
+
+private:
+  PlotContextMenu *       parent;
+  QCPAbstractPlottable *  plottable;
+
+public slots:
+  void                    set_plottable();
+  void                    moving_average_action_slot();
+
+};
+
 
 
 class AskForHeader : public QDialog
@@ -226,7 +243,6 @@ private:
   void                    actions();
   void                    load_file(std::string, int);
   void                    get_names_from_header_POLAND(std::string);
-  void                    calculate_greyscale();
 
   QToolBar *                    toolbar;
   QSpinBox *                    sizebox;
@@ -252,7 +268,10 @@ public:
   bool video_is_running;
 
 private:
-  Window *    parent;
+  Window *                        parent;
+  QCPDataContainer<QCPGraphData>  x;
+  QCPDataContainer<QCPGraphData>  y;
+  QCPDataContainer<QCPGraphData>  z;
 
 signals:
   void data(double, double, double, double);
