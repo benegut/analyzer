@@ -5,7 +5,7 @@
 #include <fstream>
 #include <cstdio>
 #include <unistd.h>
-#include <arrayfire.h>
+#include <kfr/all.hpp>
 
 Window::Window()
   : timePlot(new QCustomPlot)
@@ -66,6 +66,35 @@ Window::Window()
 
   connect(videorunner, &VideoRunner::data, this, &Window::data);
   connect(videorunner, &VideoRunner::replot_signal, this, &Window::replot_slot);
+
+
+  // const int size = 4;
+
+
+  // univector<complex<float>, size> in  = sin(linspace(0.0, c_pi<float, 2> * 4.0, size));
+  // univector<complex<float>, size> out = scalar(qnan);
+
+  // // initialize fft
+  // const dft_plan<float> dft(size);
+
+  // // allocate work buffer for fft (if needed)
+  // univector<u8> temp(dft.temp_size);
+
+  // // perform forward fft
+  // dft.execute(out, in, temp);
+
+  // // scale output
+  // out = out / size;
+
+  // // get magnitude and convert to decibels
+  // univector<double, size> dB = amp_to_dB(cabs(out));
+
+
+  // println("max  = ", maxof(dB));
+  // println("min  = ", minof(dB));
+  // println("mean = ", mean(dB));
+  // println("rms  = ", rms(dB));
+
 }
 
 
@@ -168,6 +197,7 @@ void Window::actions()
 
   connect(timePlot->selectionRect(), &QCPSelectionRect::started, this, &Window::set_greyscale_from_selection_rect_start);
   connect(timePlot->selectionRect(), &QCPSelectionRect::accepted, this, &Window::set_greyscale_from_selection_rect_accepted);
+
 }
 
 
@@ -238,10 +268,7 @@ void Window::load_file(std::string filename, int headers)
       std::string number;
       int j = 0;
       while(getline(ss,number,'\t'))
-        {
-          timePlot->graph(j)->addData((double)timePlot->graph(j++)->dataCount(),std::stod(number));
-          //j++;
-        }
+        timePlot->graph(j)->addData((double)timePlot->graph(j++)->dataCount(),std::stod(number));
     }
   file.close();
 }
@@ -678,6 +705,8 @@ void PlotContextMenu::truncate_all_at_cursor_action_slot()
 
 void PlotContextMenu::filter_action_slot()
 {
+  std::cout << (*((QCPGraph *)plottable)->data()).size() << std::endl;
+  std::cout << (*((QCPGraph *)plottable)->data()).toStdVector()[1].key << std::endl;
 }
 
 
@@ -736,7 +765,7 @@ FilterContextMenu::FilterContextMenu(PlotContextMenu * p)
 {
   QAction * moving_average_action = new QAction(tr("&Moving average"));
   addAction(moving_average_action);
-  connect(moving_average_action, &QAction::triggered, this, &PlotContextMenu::moving_average_action_slot);
+  connect(moving_average_action, &QAction::triggered, this, &FilterContextMenu::moving_average_action_slot);
 }
 
 

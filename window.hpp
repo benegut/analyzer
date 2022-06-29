@@ -100,7 +100,7 @@ class FilterContextMenu : public QMenu
   Q_OBJECT
 
 public:
-  FilterContextMenu();
+  FilterContextMenu(PlotContextMenu *);
 
 private:
   PlotContextMenu *       parent;
@@ -278,6 +278,16 @@ signals:
   void replot_signal();
 
 };
+
+
+// class GetData : public QCPDataContainer<QCPGraphData>
+// {
+//   Q_OBJECT
+
+// public:
+//   GetData();
+
+// };
 
 
 

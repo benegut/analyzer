@@ -3,6 +3,5 @@ analyzer
 *.o
 Makefile
 moc*
-qcustomplot.h
 .qmake.stash
 *.gif
