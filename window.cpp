@@ -6,6 +6,8 @@
 #include <cstdio>
 #include <unistd.h>
 #include <kfr/all.hpp>
+#include <vector>
+
 
 Window::Window()
   : timePlot(new QCustomPlot)
@@ -61,40 +63,12 @@ Window::Window()
 
   timePlot->legend->setVisible(true);
 
-  resize(1700, 800);
+  this->resize(1700, 800);
+
   this->show();
 
   connect(videorunner, &VideoRunner::data, this, &Window::data);
   connect(videorunner, &VideoRunner::replot_signal, this, &Window::replot_slot);
-
-
-  // const int size = 4;
-
-
-  // univector<complex<float>, size> in  = sin(linspace(0.0, c_pi<float, 2> * 4.0, size));
-  // univector<complex<float>, size> out = scalar(qnan);
-
-  // // initialize fft
-  // const dft_plan<float> dft(size);
-
-  // // allocate work buffer for fft (if needed)
-  // univector<u8> temp(dft.temp_size);
-
-  // // perform forward fft
-  // dft.execute(out, in, temp);
-
-  // // scale output
-  // out = out / size;
-
-  // // get magnitude and convert to decibels
-  // univector<double, size> dB = amp_to_dB(cabs(out));
-
-
-  // println("max  = ", maxof(dB));
-  // println("min  = ", minof(dB));
-  // println("mean = ", mean(dB));
-  // println("rms  = ", rms(dB));
-
 }
 
 
@@ -706,7 +680,12 @@ void PlotContextMenu::truncate_all_at_cursor_action_slot()
 void PlotContextMenu::filter_action_slot()
 {
   std::cout << (*((QCPGraph *)plottable)->data()).size() << std::endl;
-  std::cout << (*((QCPGraph *)plottable)->data()).toStdVector()[1].key << std::endl;
+  std::vector<QCPGraphData> vec = (*((QCPGraph *)plottable)->data()).toStdVector();
+  std::vector<double> new_vec;
+  new_vec.reserve(vec.size());
+  for(auto itr : vec)
+    new_vec.push_back(itr.value);
+  kfr::plot_show("name", kfr::make_univector(new_vec));
 }
 
 

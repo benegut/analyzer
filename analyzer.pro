@@ -6,7 +6,7 @@
 QT = gui core widgets
 TEMPLATE = app
 TARGET = analyzer
-INCLUDEPATH += ./ /opt/arrayfire/include/
+INCLUDEPATH += ./
 
 # You can make your code fail to compile if you use deprecated APIs.
 # In order to do so, uncomment the following line.
@@ -26,7 +26,7 @@ CONFIG(debug, release|debug) {
   win32:QCPLIB = qcustomplot1
   else: QCPLIB = qcustomplot
 }
-LIBS += -L./ -l$$QCPLIB -L/opt/arrayfire/lib64 -laf -lkfr_dft -lkfr_io -lkfr_capi_sse2
+LIBS += -L./ -l$$QCPLIB -lkfr_dft -lkfr_io -lkfr_capi_sse2
 
 # Input
 HEADERS += window.hpp
