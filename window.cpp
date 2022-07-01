@@ -5,8 +5,8 @@
 #include <fstream>
 #include <cstdio>
 #include <unistd.h>
-#include <kfr/all.hpp>
 #include <vector>
+#include <kfr/all.hpp>
 
 
 Window::Window()
@@ -53,19 +53,17 @@ Window::Window()
 
   connect(timePlot, &QCustomPlot::mousePress, this, &Window::mousePress_slot);
   connect(timePlot, &QCustomPlot::mouseRelease, this, &Window::mouseRelease_slot);
-
-  colorMap->setGradient(QCPColorGradient::gpGrayscale);
+  std::cout << "check 1\n";
   colorMap->setDataRange(QCPRange(-1.0, 1.0));
   colorMap->data()->setSize(200, 200);
   colorMap->data()->fill(0.0);
-
+  //colorMap->setGradient(QCPColorGradient::gpGrayscale);
   actions();
-
   timePlot->legend->setVisible(true);
-
   this->resize(1700, 800);
-
   this->show();
+  timePlot->replot();
+  xyPlot->replot();
 
   connect(videorunner, &VideoRunner::data, this, &Window::data);
   connect(videorunner, &VideoRunner::replot_signal, this, &Window::replot_slot);
@@ -679,13 +677,15 @@ void PlotContextMenu::truncate_all_at_cursor_action_slot()
 
 void PlotContextMenu::filter_action_slot()
 {
-  std::cout << (*((QCPGraph *)plottable)->data()).size() << std::endl;
   std::vector<QCPGraphData> vec = (*((QCPGraph *)plottable)->data()).toStdVector();
   std::vector<double> new_vec;
   new_vec.reserve(vec.size());
   for(auto itr : vec)
     new_vec.push_back(itr.value);
-  kfr::plot_show("name", kfr::make_univector(new_vec));
+  kfr::expression_pointer<double> blackman_harris = kfr::to_pointer(kfr::window_blackman_harris(new_vec.size()));
+  kfr::univector<double> uni_vec = kfr::make_univector(new_vec);
+  kfr::fir_lowpass(uni_vec,0.15,blackman_harris,true);
+  std::vector<double> new_vec_2 = static_cast<std::vector<double>>(uni_vec);
 }
 
 

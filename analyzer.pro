@@ -26,7 +26,7 @@ CONFIG(debug, release|debug) {
   win32:QCPLIB = qcustomplot1
   else: QCPLIB = qcustomplot
 }
-LIBS += -L./ -l$$QCPLIB -lkfr_dft -lkfr_io -lkfr_capi_sse2
+LIBS += -L./ -l$$QCPLIB -lkfr_io -lkfr_dft
 
 # Input
 HEADERS += window.hpp

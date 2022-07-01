@@ -2606,8 +2606,9 @@ public:
   void clear();
   void sort();
   void squeeze(bool preAllocation=true, bool postAllocation=true);
-  std::vector<DataType> toStdVector(){ return mData.toStdVector(); }
-
+  std::vector<DataType> toStdVector(){return mData.toStdVector();}
+  QVector<DataType> get(){return mData;}
+  
   const_iterator constBegin() const { return mData.constBegin()+mPreallocSize; }
   const_iterator constEnd() const { return mData.constEnd(); }
   iterator begin() { return mData.begin()+mPreallocSize; }
