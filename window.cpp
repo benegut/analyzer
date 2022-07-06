@@ -2,10 +2,8 @@
 #include <iostream>
 #include <string>
 #include <sstream>
-#include <fstream>
 #include <cstdio>
 #include <unistd.h>
-#include <vector>
 #include <kfr/all.hpp>
 
 
@@ -15,7 +13,7 @@ Window::Window()
   , colorMap(new QCPColorMap(xyPlot->xAxis, xyPlot->yAxis))
   , plotcontextmenu(new PlotContextMenu(timePlot, this))
   , mathwindow(new MathWindow(this))
-  , videowindow(new VideoWindow(this))
+  , videowindow(new VideoWindow(this)) 
   , videorunner(new VideoRunner(this))
   , lowerLine(new QCPItemStraightLine(timePlot))
   , upperLine(new QCPItemStraightLine(timePlot))
@@ -672,20 +670,6 @@ void PlotContextMenu::truncate_all_at_cursor_action_slot()
     }
 
   parent->replot();
-}
-
-
-void PlotContextMenu::filter_action_slot()
-{
-  std::vector<QCPGraphData> vec = (*((QCPGraph *)plottable)->data()).toStdVector();
-  std::vector<double> new_vec;
-  new_vec.reserve(vec.size());
-  for(auto itr : vec)
-    new_vec.push_back(itr.value);
-  kfr::expression_pointer<double> blackman_harris = kfr::to_pointer(kfr::window_blackman_harris(new_vec.size()));
-  kfr::univector<double> uni_vec = kfr::make_univector(new_vec);
-  kfr::fir_lowpass(uni_vec,0.15,blackman_harris,true);
-  std::vector<double> new_vec_2 = static_cast<std::vector<double>>(uni_vec);
 }
 
 
