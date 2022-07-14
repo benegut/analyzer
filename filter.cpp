@@ -20,7 +20,7 @@ void PlotContextMenu::filter_action_slot()
       key_vec.push_back(itr->key);
     }
   kfr::expression_pointer<double> rectangular = kfr::to_pointer(kfr::window_rectangular(uni_vec.size()));
-  kfr::fir_lowpass(uni_vec,1000000.0,rectangular,false);
+  kfr::fir_lowpass(uni_vec, 0.00008 ,rectangular,false);
   for(auto i : uni_vec)
     vec.push_back(i);
   ((QCPGraph *)plottable)->setData(key_vec, QVector<double>::fromStdVector(vec));
