@@ -6,6 +6,7 @@
 #include "qcustomplot.h"
 #include <exprtk.hpp>
 #include <string>
+#include <kfr/all.hpp>
 
 
 typedef enum
@@ -109,6 +110,11 @@ private:
   QCustomPlot *           parent;
   QCPAbstractPlottable *  plottable;
 
+  void                    fir_lowpass_setup(kfr::expression_pointer<double>);
+  void                    fir_highpass_setup(kfr::expression_pointer<double>);
+  void                    fir_bandpass_setup(kfr::expression_pointer<double>);
+  void                    fir_bandstop_setup(kfr::expression_pointer<double>);
+
 public slots:
   void                    set_plottable(QCPAbstractPlottable *);
   void                    moving_average_action_slot();
@@ -131,6 +137,32 @@ public:
 
 private:
   int range;
+};
+
+
+class AskForWindowFunction : public QDialog
+{
+  Q_OBJECT
+
+public:
+  AskForWindowFunction();
+  int get_value();
+
+private:
+  int entry;
+};
+
+
+class AskForFirFilter : public QDialog
+{
+  Q_OBJECT
+
+public:
+  AskForFirFilter();
+  int get_value();
+
+private:
+  int entry;
 };
 
 

@@ -18,8 +18,6 @@ void PlotContextMenu::filter_action_slot()
 
   kfr::expression_pointer<double> kaiser = kfr::to_pointer(kfr::window_kaiser(taps.size(), 3.0));
   fir_lowpass(taps, 0.00001, kaiser, true);
-
-
   kfr::filter_fir<double> filter(taps);
 
   auto begin = (((QCPGraph *)plottable)->data())->constBegin();
