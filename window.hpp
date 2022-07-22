@@ -17,6 +17,7 @@ typedef enum
 class Window;
 class MathWindow;
 class VideoRunner;
+class FilterContextMenu;
 
 class Equation : public QWidget
 {
@@ -75,6 +76,7 @@ public:
 
 private:
   Window *                window_parent;
+  FilterContextMenu *     filtercontextmenu;
   QCPAbstractPlottable *  plottable;
   QCustomPlot *           parent;
   XYZ *                   xyz;
@@ -100,16 +102,35 @@ class FilterContextMenu : public QMenu
   Q_OBJECT
 
 public:
-  FilterContextMenu(PlotContextMenu *);
+  FilterContextMenu(QCustomPlot *, PlotContextMenu *);
 
 private:
-  PlotContextMenu *       parent;
+  PlotContextMenu *       window_parent;
+  QCustomPlot *           parent;
   QCPAbstractPlottable *  plottable;
 
 public slots:
-  void                    set_plottable();
+  void                    set_plottable(QCPAbstractPlottable *);
   void                    moving_average_action_slot();
+  void                    biquad_action_slot();
+  void                    fir_action_slot();
+  void                    iir_action_slot();
+  void                    convolution_action_slot();
+  void                    dft_action_slot();
 
+};
+
+
+class AskForMovingAverageRange : public QDialog
+{
+  Q_OBJECT
+
+public:
+  AskForMovingAverageRange();
+  int get_value();
+
+private:
+  int range;
 };
 
 
@@ -278,16 +299,6 @@ signals:
   void replot_signal();
 
 };
-
-
-// class GetData : public QCPDataContainer<QCPGraphData>
-// {
-//   Q_OBJECT
-
-// public:
-//   GetData();
-
-// };
 
 
 

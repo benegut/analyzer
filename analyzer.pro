@@ -29,4 +29,4 @@ LIBS += -L./ -l$$QCPLIB -lkfr_io -lkfr_dft
 
 # Input
 HEADERS += window.hpp
-SOURCES += main.cpp window.cpp filter.cpp
+SOURCES += main.cpp window.cpp video.cpp parser.cpp plotcontextmenu.cpp filtercontextmenu.cpp dialog.cpp
