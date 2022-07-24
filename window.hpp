@@ -179,6 +179,48 @@ private:
 };
 
 
+class AskForLowerFrequency : public QDialog
+{
+  Q_OBJECT
+
+public:
+  AskForLowerFrequency();
+  double  get_value();
+
+private:
+  double entry;
+};
+
+
+class AskForUpperFrequency : public QDialog
+{
+  Q_OBJECT
+
+public:
+  AskForUpperFrequency();
+  double  get_value();
+
+private:
+  double entry;
+};
+
+
+
+
+class AskForIirOptions : public QDialog
+{
+  Q_OBJECT
+
+public:
+  AskForIirOptions();
+  std::string get_value();
+
+private:
+  int entry;
+};
+
+
+
 class AskForHeader : public QDialog
 {
   Q_OBJECT

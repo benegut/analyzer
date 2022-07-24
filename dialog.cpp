@@ -1,4 +1,6 @@
 #include "window.hpp"
+#include <string>
+#include <cstdio>
 
 AskForHeader::AskForHeader()
 {
@@ -142,3 +144,76 @@ double AskForFrequency::get_value()
 {
   return entry;
 }
+
+
+AskForLowerFrequency::AskForLowerFrequency()
+{
+  QLabel * label = new QLabel(this);
+  label->setText("Set lower Cut-Off Frequency: ");
+  QLineEdit * enter = new QLineEdit(this);
+  connect(enter, &QLineEdit::editingFinished, [this,enter](){entry = enter->text().toDouble();done(1);});
+  QVBoxLayout * layout = new QVBoxLayout(this);
+  layout->addWidget(label);
+  layout->addWidget(enter);
+  setLayout(layout);
+  exec();
+}
+
+
+double AskForLowerFrequency::get_value()
+{
+  return entry;
+}
+
+
+AskForUpperFrequency::AskForUpperFrequency()
+{
+  QLabel * label = new QLabel(this);
+  label->setText("Set upper Cut-Off Frequency: ");
+  QLineEdit * enter = new QLineEdit(this);
+  connect(enter, &QLineEdit::editingFinished, [this,enter](){entry = enter->text().toDouble();done(1);});
+  QVBoxLayout * layout = new QVBoxLayout(this);
+  layout->addWidget(label);
+  layout->addWidget(enter);
+  setLayout(layout);
+  exec();
+}
+
+
+double AskForUpperFrequency::get_value()
+{
+  return entry;
+}
+
+
+
+AskForIirOptions::AskForIirOptions()
+{
+  QLabel * label = new QLabel(this);
+  label->setText("Choose option for IIR-Filter: ");
+  QLineEdit * enter = new QLineEdit(this);
+  connect(enter, &QLineEdit::editingFinished, [this,enter](){entry = enter->text().toInt();done(1);});
+  QVBoxLayout * layout = new QVBoxLayout(this);
+  layout->addWidget(label);
+  layout->addWidget(enter);
+  setLayout(layout);
+  exec();
+}
+
+
+std::string AskForIirOptions::get_value()
+{
+  std::string option;
+
+  switch(entry)
+    {
+    case 1: option = ""; break;
+    case 2: option = ""; break;
+    case 3: option = ""; break;
+    case 4: option = ""; break;
+    default: std::printf("Not a valid option.\n");
+    }
+
+  return option;
+}
+

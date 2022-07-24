@@ -4,7 +4,6 @@
 #include <sstream>
 #include <unistd.h>
 #include <kfr/all.hpp>
-#include <fstream>
 
 
 Window::Window()
@@ -51,7 +50,7 @@ Window::Window()
 
   connect(timePlot, &QCustomPlot::mousePress, this, &Window::mousePress_slot);
   connect(timePlot, &QCustomPlot::mouseRelease, this, &Window::mouseRelease_slot);
-  std::cout << "check 1\n";
+
   colorMap->setDataRange(QCPRange(-1.0, 1.0));
   colorMap->data()->setSize(200, 200);
   colorMap->data()->fill(0.0);
