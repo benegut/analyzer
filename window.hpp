@@ -110,10 +110,10 @@ private:
   QCustomPlot *           parent;
   QCPAbstractPlottable *  plottable;
 
-  void                    fir_lowpass_setup(kfr::expression_pointer<double>);
-  void                    fir_highpass_setup(kfr::expression_pointer<double>);
-  void                    fir_bandpass_setup(kfr::expression_pointer<double>);
-  void                    fir_bandstop_setup(kfr::expression_pointer<double>);
+  kfr::filter_fir<double> fir_lowpass_setup(kfr::expression_pointer<double>);
+  kfr::filter_fir<double> fir_highpass_setup(kfr::expression_pointer<double>);
+  kfr::filter_fir<double> fir_bandpass_setup(kfr::expression_pointer<double>);
+  kfr::filter_fir<double> fir_bandstop_setup(kfr::expression_pointer<double>);
 
 public slots:
   void                    set_plottable(QCPAbstractPlottable *);
@@ -165,6 +165,18 @@ private:
   int entry;
 };
 
+
+class AskForFrequency : public QDialog
+{
+  Q_OBJECT
+
+public:
+  AskForFrequency();
+  double  get_value();
+
+private:
+  double entry;
+};
 
 
 class AskForHeader : public QDialog

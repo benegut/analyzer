@@ -133,19 +133,18 @@ void FilterContextMenu::fir_action_slot()
 
   AskForWindowFunction window_function_dialog;
   int window_int = window_function_dialog.get_value();
-  std::cout << window_int << std::endl;
 
   switch(window_int)
     {
-    case 1: window_function_pointer = kfr::to_pointer(kfr::window_bartlett(taps.size())); break;
-    case 2: window_function_pointer = kfr::to_pointer(kfr::window_bartlett_hann(taps.size())); break;
-    case 3: window_function_pointer = kfr::to_pointer(kfr::window_blackman(taps.size())); break;
-    case 4: window_function_pointer = kfr::to_pointer(kfr::window_blackman_harris(taps.size())); break;
-    case 5: window_function_pointer = kfr::to_pointer(kfr::window_bohman(taps.size())); break;
-    case 6: window_function_pointer = kfr::to_pointer(kfr::window_cosine(taps.size())); break;
-    case 7: window_function_pointer = kfr::to_pointer(kfr::window_flattop(taps.size())); break;
-    case 8: window_function_pointer = kfr::to_pointer(kfr::window_gaussian(taps.size())); break;
-    case 9: window_function_pointer = kfr::to_pointer(kfr::window_hamming(taps.size())); break;
+    case 1: window_function_pointer   = kfr::to_pointer(kfr::window_bartlett(taps.size())); break;
+    case 2: window_function_pointer  = kfr::to_pointer(kfr::window_bartlett_hann(taps.size())); break;
+    case 3: window_function_pointer  = kfr::to_pointer(kfr::window_blackman(taps.size())); break;
+    case 4: window_function_pointer  = kfr::to_pointer(kfr::window_blackman_harris(taps.size())); break;
+    case 5: window_function_pointer  = kfr::to_pointer(kfr::window_bohman(taps.size())); break;
+    case 6: window_function_pointer  = kfr::to_pointer(kfr::window_cosine(taps.size())); break;
+    case 7: window_function_pointer  = kfr::to_pointer(kfr::window_flattop(taps.size())); break;
+    case 8: window_function_pointer  = kfr::to_pointer(kfr::window_gaussian(taps.size())); break;
+    case 9: window_function_pointer  = kfr::to_pointer(kfr::window_hamming(taps.size())); break;
     case 10: window_function_pointer = kfr::to_pointer(kfr::window_hann(taps.size())); break;
     case 11: window_function_pointer = kfr::to_pointer(kfr::window_kaiser(taps.size())); break;
     case 12: window_function_pointer = kfr::to_pointer(kfr::window_lanczos(taps.size())); break;
@@ -156,37 +155,77 @@ void FilterContextMenu::fir_action_slot()
 
   AskForFirFilter fir_filter_dialog;
   int fir_filter_int = fir_filter_dialog.get_value();
-  std::cout << fir_filter_int << std::endl;
+
+  kfr::filter_fir<double> filter(taps);
 
   switch(fir_filter_int)
     {
-    case 1: fir_lowpass_setup(window_function_pointer); break;
-    case 2: fir_highpass_setup(window_function_pointer); break;
-    case 3: fir_bandpass_setup(window_function_pointer); break;
-    case 4: fir_bandstop_setup(window_function_pointer); break;
+    case 1: filter = fir_lowpass_setup(window_function_pointer); break;
+    case 2: filter = fir_highpass_setup(window_function_pointer); break;
+    case 3: filter = fir_bandpass_setup(window_function_pointer); break;
+    case 4: filter = fir_bandstop_setup(window_function_pointer); break;
     default: printf("Not a valid number.\n");
     }
+
+  auto begin = (((QCPGraph *)plottable)->data())->constBegin();
+  auto end   = (((QCPGraph *)plottable)->data())->constEnd();
+
+  for(auto itr = begin; itr != end; itr++)
+    {
+      data.push_back(itr->value);
+      key_vec.push_back(itr->key);
+    }
+
+  filter.apply(data);
+
+  std::vector<double> vec;
+  vec.reserve(_size_);
+
+  for(auto i : data)
+    vec.push_back(i);
+
+  ((QCPGraph *)plottable)->setData(key_vec, QVector<double>::fromStdVector(vec));
+  parent->replot();
 }
 
 
-void FilterContextMenu::fir_lowpass_setup(kfr::expression_pointer<double> w)
+kfr::filter_fir<double> FilterContextMenu::fir_lowpass_setup(kfr::expression_pointer<double> w)
 {
-  std::cout << "text\n";
+  kfr::univector<double, 7> taps;
+  fir_lowpass(taps, 0.00001, w, true);
+
+  kfr::filter_fir<double> filter(taps);
+  return filter;
 }
 
 
-void FilterContextMenu::fir_highpass_setup(kfr::expression_pointer<double> w)
+kfr::filter_fir<double>FilterContextMenu::fir_highpass_setup(kfr::expression_pointer<double> w)
 {
+  kfr::univector<double, 7> taps;
+  fir_highpass(taps, 0.1, w, true);
+
+  kfr::filter_fir<double> filter(taps);
+  return filter;
 }
 
 
-void FilterContextMenu::fir_bandpass_setup(kfr::expression_pointer<double> w)
+kfr::filter_fir<double> FilterContextMenu::fir_bandpass_setup(kfr::expression_pointer<double> w)
 {
+  kfr::univector<double, 7> taps;
+  fir_bandpass(taps, 0.00001, 0.1, w, true);
+
+  kfr::filter_fir<double> filter(taps);
+  return filter;
 }
 
 
-void FilterContextMenu::fir_bandstop_setup(kfr::expression_pointer<double> w)
+kfr::filter_fir<double> FilterContextMenu::fir_bandstop_setup(kfr::expression_pointer<double> w)
 {
+  kfr::univector<double, 7> taps;
+  fir_bandstop(taps, 0.000001, 0.1, w, true);
+
+  kfr::filter_fir<double> filter(taps);
+  return filter;
 }
 
 

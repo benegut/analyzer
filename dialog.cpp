@@ -1,5 +1,4 @@
 #include "window.hpp"
-#include <cstdio>
 
 AskForHeader::AskForHeader()
 {
@@ -90,7 +89,7 @@ AskForWindowFunction::AskForWindowFunction()
   QLabel * label = new QLabel(this);
   label->setText("Select Window-Function:\n(1) Bartlett \n(2) Bartlett-Hann\n(3) Blackman\n(4) Blackman-Harris\n(5) Bohman\n(6) Cosine\n(7) Flattop\n(8) Gaussian\n(9) Hamming\n(10) Hann\n(11) Kaiser\n(12) Lanczos\n(13) Rectangular\n(14) Triangular");
   QLineEdit * enter = new QLineEdit(this);
-  connect(enter, &QLineEdit::editingFinished, [this,enter](){entry = enter->text().toInt();std::printf("%d\n",entry);done(1);});
+  connect(enter, &QLineEdit::editingFinished, [this,enter](){entry = enter->text().toInt();done(1);});
   QVBoxLayout * layout = new QVBoxLayout(this);
   layout->addWidget(label);
   layout->addWidget(enter);
@@ -110,7 +109,7 @@ AskForFirFilter::AskForFirFilter()
   QLabel * label = new QLabel(this);
   label->setText("Select Filter:\n(1) FIR LowPass\n(2) FIR HighPass\n(3) FIR BandPass\n(4) BandStop");
   QLineEdit * enter = new QLineEdit(this);
-  connect(enter, &QLineEdit::editingFinished, [this,enter](){entry = enter->text().toInt();std::printf("%d\n",entry);done(1);});
+  connect(enter, &QLineEdit::editingFinished, [this,enter](){entry = enter->text().toInt();done(1);});
   QVBoxLayout * layout = new QVBoxLayout(this);
   layout->addWidget(label);
   layout->addWidget(enter);
@@ -120,6 +119,26 @@ AskForFirFilter::AskForFirFilter()
 
 
 int AskForFirFilter::get_value()
+{
+  return entry;
+}
+
+
+AskForFrequency::AskForFrequency()
+{
+  QLabel * label = new QLabel(this);
+  label->setText("Set Cut-Off Frequency: ");
+  QLineEdit * enter = new QLineEdit(this);
+  connect(enter, &QLineEdit::editingFinished, [this,enter](){entry = enter->text().toDouble();done(1);});
+  QVBoxLayout * layout = new QVBoxLayout(this);
+  layout->addWidget(label);
+  layout->addWidget(enter);
+  setLayout(layout);
+  exec();
+}
+
+
+double AskForFrequency::get_value()
 {
   return entry;
 }
